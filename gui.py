@@ -1,14 +1,15 @@
 """
-SignalCopier GUI — tkinter-based interface.
+SignalCopier GUI — tkinter-based interface with EN/IT language support.
 Auto-detects MT5, receives signals via Telegram Bot (zero config).
 """
 
 import tkinter as tk
-from tkinter import ttk, scrolledtext, messagebox
+from tkinter import ttk, scrolledtext, messagebox, filedialog
 import threading
 import asyncio
 import json
 import os
+from datetime import datetime
 
 from mt5_connector import auto_connect, disconnect, get_open_positions, get_account_equity
 from copier import SignalCopier
@@ -17,152 +18,98 @@ CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.j
 
 LANG = {
     'en': {
-        'title': 'IASMC SIGNAL COPIER',
-        'help_btn': '  ? How to use  ',
-        'mt5_frame': 'MetaTrader 5',
-        'mt5_path': 'MT5 Path:',
-        'browse': 'Browse',
+        'title': 'IASMC SIGNAL COPIER', 'help_btn': '  ? How to use  ',
+        'mt5_frame': 'MetaTrader 5', 'mt5_path': 'MT5 Path:', 'browse': 'Browse',
         'path_hint': 'Leave empty to auto-detect the running terminal',
-        'connect': 'Connect',
-        'account': 'Account:',
-        'server': 'Server:',
-        'balance': 'Balance:',
-        'equity': 'Equity:',
-        'positions': 'Positions:',
-        'searching': '  Searching...',
-        'connected': '  Connected',
+        'connect': 'Connect', 'account': 'Account:', 'server': 'Server:',
+        'balance': 'Balance:', 'equity': 'Equity:', 'positions': 'Positions:',
+        'searching': '  Searching...', 'connected': '  Connected',
         'not_found': '  Not found — open MT5 and login first',
         'settings_frame': 'Trading Settings',
         'use_signal': "Use signal's suggested risk (ignore custom settings below)",
-        'risk_pct': 'Risk %:',
-        'max_pos': 'Max positions:',
-        'max_sym': 'Max per symbol:',
-        'start': '  START  ',
-        'stop': '  STOP  ',
-        'stopped': 'STOPPED',
-        'starting': 'STARTING...',
-        'running': 'RUNNING',
+        'risk_pct': 'Risk %:', 'max_pos': 'Max positions:', 'max_sym': 'Max per symbol:',
+        'start': '  START  ', 'stop': '  STOP  ',
+        'stopped': 'STOPPED', 'starting': 'STARTING...', 'running': 'RUNNING',
         'log_frame': 'Signal Log',
-        'mt5_connected_log': 'MT5 connected: {} @ {}',
-        'mt5_please_open': 'Please open MetaTrader 5 and login to your account, then click Connect.',
-        'mt5_not_connected_err': 'MT5 not connected.\n\nPlease open MetaTrader 5, login to your account, then click Connect.',
-        'help_title': 'How to Use',
+        'mt5_log': 'MT5 connected: {} @ {}',
+        'mt5_please': 'Please open MetaTrader 5 and login, then click Connect.',
+        'mt5_err': 'MT5 not connected.\n\nOpen MetaTrader 5, login, then click Connect.',
+        'help_title': 'How to Use', 'got_it': 'Got it!',
         'help_text': """HOW TO USE IASMC SIGNAL COPIER
 
-STEP 1 — Choose your MT5 terminal
-   Click "Browse" and select the terminal64.exe file
-   of the MetaTrader 5 installation you want to use.
+STEP 1 - Choose your MT5 terminal
+   Click "Browse" and select terminal64.exe.
    Leave empty to auto-detect.
 
-STEP 2 — Open MetaTrader 5 and login
-   Open the MT5 terminal you selected.
-   Login to your trading account (demo or real).
-   Make sure AutoTrading is ENABLED (button in toolbar).
+STEP 2 - Open MetaTrader 5 and login
+   Login to your account (demo or real).
+   Enable AutoTrading (button in toolbar).
 
-STEP 3 — Connect
-   Click "Connect" in this app.
-   Your account info should appear (account number,
-   server, balance).
+STEP 3 - Connect
+   Click "Connect". Account info will appear.
 
-STEP 4 — Configure settings
-   Check "Use signal's suggested risk" to follow
-   the signal provider's risk management.
-   Or uncheck it to set your own risk %, max positions,
-   and max positions per symbol.
+STEP 4 - Configure settings
+   Check "Use signal's suggested risk" or
+   set your own risk %, max positions.
 
-STEP 5 — Start
-   Click START. The copier will listen for trading
-   signals and automatically execute them on your
-   MT5 account.
+STEP 5 - Start
+   Click START. Signals will be copied automatically.
 
-SIGNALS HANDLED:
-   - Trade OPEN (new entry with SL/TP)
-   - Trade CLOSE (notification only)
-   - SL Modified (trailing stop / breakeven)
-   - Partial TP (close X% of position)
-   - Portfolio TP (close partial on all positions)
+SIGNALS: Open, Close, SL Modify, Partial TP, Portfolio TP
 """,
-        'got_it': 'Got it!',
     },
     'it': {
-        'title': 'IASMC SIGNAL COPIER',
-        'help_btn': '  ? Come usare  ',
-        'mt5_frame': 'MetaTrader 5',
-        'mt5_path': 'Percorso MT5:',
-        'browse': 'Sfoglia',
-        'path_hint': 'Lascia vuoto per rilevare automaticamente il terminale aperto',
-        'connect': 'Connetti',
-        'account': 'Conto:',
-        'server': 'Server:',
-        'balance': 'Saldo:',
-        'equity': 'Equity:',
-        'positions': 'Posizioni:',
-        'searching': '  Ricerca...',
-        'connected': '  Connesso',
-        'not_found': '  Non trovato — apri MT5 e fai il login',
+        'title': 'IASMC SIGNAL COPIER', 'help_btn': '  ? Come usare  ',
+        'mt5_frame': 'MetaTrader 5', 'mt5_path': 'Percorso MT5:', 'browse': 'Sfoglia',
+        'path_hint': 'Lascia vuoto per rilevamento automatico',
+        'connect': 'Connetti', 'account': 'Conto:', 'server': 'Server:',
+        'balance': 'Saldo:', 'equity': 'Equity:', 'positions': 'Posizioni:',
+        'searching': '  Ricerca...', 'connected': '  Connesso',
+        'not_found': '  Non trovato — apri MT5 e fai login',
         'settings_frame': 'Impostazioni Trading',
-        'use_signal': "Usa il rischio suggerito dal segnale (ignora impostazioni sotto)",
-        'risk_pct': 'Rischio %:',
-        'max_pos': 'Max posizioni:',
-        'max_sym': 'Max per simbolo:',
-        'start': '  AVVIA  ',
-        'stop': '  FERMA  ',
-        'stopped': 'FERMO',
-        'starting': 'AVVIO...',
-        'running': 'ATTIVO',
+        'use_signal': "Usa il rischio suggerito dal segnale",
+        'risk_pct': 'Rischio %:', 'max_pos': 'Max posizioni:', 'max_sym': 'Max per simbolo:',
+        'start': '  AVVIA  ', 'stop': '  FERMA  ',
+        'stopped': 'FERMO', 'starting': 'AVVIO...', 'running': 'ATTIVO',
         'log_frame': 'Log Segnali',
-        'mt5_connected_log': 'MT5 connesso: {} @ {}',
-        'mt5_please_open': 'Apri MetaTrader 5, fai login nel tuo conto e clicca Connetti.',
-        'mt5_not_connected_err': 'MT5 non connesso.\n\nApri MetaTrader 5, fai login nel tuo conto e clicca Connetti.',
-        'help_title': 'Come Usare',
+        'mt5_log': 'MT5 connesso: {} @ {}',
+        'mt5_please': 'Apri MetaTrader 5, fai login e clicca Connetti.',
+        'mt5_err': 'MT5 non connesso.\n\nApri MetaTrader 5, fai login e clicca Connetti.',
+        'help_title': 'Come Usare', 'got_it': 'Capito!',
         'help_text': """COME USARE IASMC SIGNAL COPIER
 
-PASSO 1 — Scegli il tuo terminale MT5
-   Clicca "Sfoglia" e seleziona il file terminal64.exe
-   dell'installazione MetaTrader 5 che vuoi usare.
+PASSO 1 - Scegli il terminale MT5
+   Clicca "Sfoglia" e seleziona terminal64.exe.
    Lascia vuoto per rilevamento automatico.
 
-PASSO 2 — Apri MetaTrader 5 e fai login
-   Apri il terminale MT5 selezionato.
+PASSO 2 - Apri MetaTrader 5 e fai login
    Fai login nel tuo conto (demo o reale).
-   Assicurati che AutoTrading sia ATTIVATO (pulsante in alto).
+   Attiva AutoTrading (pulsante in alto).
 
-PASSO 3 — Connetti
-   Clicca "Connetti" in questa app.
-   Le info del conto appariranno (numero conto,
-   server, saldo).
+PASSO 3 - Connetti
+   Clicca "Connetti". Le info conto appariranno.
 
-PASSO 4 — Configura impostazioni
-   Spunta "Usa il rischio suggerito dal segnale" per
-   seguire la gestione del rischio del provider.
-   Oppure deseleziona per impostare il tuo rischio %,
-   max posizioni e max per simbolo.
+PASSO 4 - Configura impostazioni
+   Spunta "Usa rischio suggerito" oppure
+   imposta rischio %, max posizioni.
 
-PASSO 5 — Avvia
-   Clicca AVVIA. Il copier ascoltera' i segnali di
-   trading e li eseguira' automaticamente sul tuo
-   conto MT5.
+PASSO 5 - Avvia
+   Clicca AVVIA. I segnali verranno copiati.
 
-SEGNALI GESTITI:
-   - Apertura trade (entry con SL/TP)
-   - Chiusura trade (solo notifica)
-   - Modifica SL (trailing stop / breakeven)
-   - TP Parziale (chiudi X% della posizione)
-   - Portfolio TP (chiudi parziale su tutte le posizioni)
+SEGNALI: Apertura, Chiusura, Modifica SL, TP Parziale, Portfolio TP
 """,
-        'got_it': 'Capito!',
     },
 }
 
 
-def load_config() -> dict:
+def load_config():
     if os.path.exists(CONFIG_FILE):
         with open(CONFIG_FILE, 'r') as f:
             return json.load(f)
     return {'trading': {'use_signal_settings': True, 'custom_risk_pct': 1.0, 'max_positions': 5, 'max_per_symbol': 1}}
 
 
-def save_config(config: dict):
+def save_config(config):
     with open(CONFIG_FILE, 'w') as f:
         json.dump(config, f, indent=2)
 
@@ -172,10 +119,8 @@ class SignalCopierGUI:
         self.root = tk.Tk()
         self.root.title("IASMC Signal Copier")
         w, h = 650, 600
-        sw = self.root.winfo_screenwidth()
-        sh = self.root.winfo_screenheight()
-        x = (sw - w) // 2
-        y = (sh - h) // 2
+        x = (self.root.winfo_screenwidth() - w) // 2
+        y = (self.root.winfo_screenheight() - h) // 2
         self.root.geometry(f"{w}x{h}+{x}+{y}")
         self.root.configure(bg='#1a1a2e')
         self.root.resizable(True, True)
@@ -191,198 +136,130 @@ class SignalCopierGUI:
 
         self._build_ui()
         self._try_connect_mt5()
-        self._update_equity()
+        self._update_loop()
 
     def _build_ui(self):
-        style = ttk.Style()
-        style.theme_use('clam')
-        style.configure('TFrame', background='#1a1a2e')
-        style.configure('TLabel', background='#1a1a2e', foreground='#e0e0e0', font=('Segoe UI', 10))
-        style.configure('Title.TLabel', background='#1a1a2e', foreground='#00ff88', font=('Segoe UI', 16, 'bold'))
-        style.configure('Status.TLabel', background='#1a1a2e', foreground='#ffaa00', font=('Segoe UI', 10, 'bold'))
-        style.configure('TLabelframe', background='#1a1a2e', foreground='#e0e0e0')
-        style.configure('TLabelframe.Label', background='#1a1a2e', foreground='#e0e0e0', font=('Segoe UI', 10, 'bold'))
-        style.configure('TCheckbutton', background='#1a1a2e', foreground='#e0e0e0')
+        s = ttk.Style()
+        s.theme_use('clam')
+        s.configure('TFrame', background='#1a1a2e')
+        s.configure('TLabel', background='#1a1a2e', foreground='#e0e0e0', font=('Segoe UI', 10))
+        s.configure('Title.TLabel', background='#1a1a2e', foreground='#00ff88', font=('Segoe UI', 16, 'bold'))
+        s.configure('Status.TLabel', background='#1a1a2e', foreground='#ffaa00', font=('Segoe UI', 10, 'bold'))
+        s.configure('TLabelframe', background='#1a1a2e', foreground='#e0e0e0')
+        s.configure('TLabelframe.Label', background='#1a1a2e', foreground='#e0e0e0', font=('Segoe UI', 10, 'bold'))
+        s.configure('TCheckbutton', background='#1a1a2e', foreground='#e0e0e0')
 
-        # Title + Help + Language buttons
-        title_frame = ttk.Frame(self.root)
-        title_frame.pack(fill='x', padx=10, pady=(10, 5))
-        self.title_label = ttk.Label(title_frame, text=self.t['title'], style='Title.TLabel')
-        self.title_label.pack(side='left')
-        self.help_btn_widget = ttk.Button(title_frame, text=self.t['help_btn'], command=self._show_help)
-        self.help_btn_widget.pack(side='right')
-        ttk.Button(title_frame, text="IT", width=3, command=lambda: self._set_language('it')).pack(side='right', padx=2)
-        ttk.Button(title_frame, text="EN", width=3, command=lambda: self._set_language('en')).pack(side='right', padx=2)
+        # ── Title + Lang + Help ──
+        top = ttk.Frame(self.root); top.pack(fill='x', padx=10, pady=(10, 5))
+        self.w_title = ttk.Label(top, text=self.t['title'], style='Title.TLabel'); self.w_title.pack(side='left')
+        self.w_help = ttk.Button(top, text=self.t['help_btn'], command=self._show_help); self.w_help.pack(side='right')
+        ttk.Button(top, text="IT", width=3, command=lambda: self._set_lang('it')).pack(side='right', padx=2)
+        ttk.Button(top, text="EN", width=3, command=lambda: self._set_lang('en')).pack(side='right', padx=2)
 
-        # MT5 Status Frame
-        self.mt5_frame = ttk.LabelFrame(self.root, text=self.t['mt5_frame'], padding=10)
-        self.mt5_frame.pack(fill='x', padx=10, pady=5)
-
-        # MT5 Path selector
-        path_frame = ttk.Frame(self.mt5_frame)
-        path_frame.pack(fill='x', pady=(0, 5))
-
-        self.path_label = ttk.Label(path_frame, text=self.t['mt5_path'])
-        self.path_label.pack(side='left')
+        # ── MT5 ──
+        self.w_mt5f = ttk.LabelFrame(self.root, text=self.t['mt5_frame'], padding=10); self.w_mt5f.pack(fill='x', padx=10, pady=5)
+        pf = ttk.Frame(self.w_mt5f); pf.pack(fill='x', pady=(0, 5))
+        self.w_pathlbl = ttk.Label(pf, text=self.t['mt5_path']); self.w_pathlbl.pack(side='left')
         self.mt5_path_var = tk.StringVar(value=self.config.get('mt5_path', ''))
-        self.mt5_path_entry = ttk.Entry(path_frame, textvariable=self.mt5_path_var, width=50)
-        self.mt5_path_entry.pack(side='left', padx=5, fill='x', expand=True)
-        self.browse_btn = ttk.Button(path_frame, text=self.t['browse'], command=self._browse_mt5)
-        self.browse_btn.pack(side='left')
+        ttk.Entry(pf, textvariable=self.mt5_path_var, width=45).pack(side='left', padx=5, fill='x', expand=True)
+        self.w_browse = ttk.Button(pf, text=self.t['browse'], command=self._browse_mt5); self.w_browse.pack(side='left')
+        self.w_hint = ttk.Label(self.w_mt5f, text=self.t['path_hint'], foreground='#888', font=('Segoe UI', 8)); self.w_hint.pack(anchor='w')
 
-        self.path_hint = ttk.Label(self.mt5_frame, text=self.t['path_hint'],
-                  foreground='#888888', font=('Segoe UI', 8))
-        self.path_hint.pack(anchor='w')
+        ig = ttk.Frame(self.w_mt5f); ig.pack(fill='x', pady=(5, 0))
+        self.mt5_status = ttk.Label(ig, text=self.t['searching'], style='Status.TLabel'); self.mt5_status.grid(row=0, column=0, columnspan=4, sticky='w', pady=(0, 5))
+        self.w_acclbl = ttk.Label(ig, text=self.t['account']); self.w_acclbl.grid(row=1, column=0, sticky='w')
+        self.mt5_account = ttk.Label(ig, text="—"); self.mt5_account.grid(row=1, column=1, sticky='w', padx=(5, 20))
+        self.w_srvlbl = ttk.Label(ig, text=self.t['server']); self.w_srvlbl.grid(row=1, column=2, sticky='w')
+        self.mt5_server = ttk.Label(ig, text="—"); self.mt5_server.grid(row=1, column=3, sticky='w', padx=(5, 0))
+        self.w_ballbl = ttk.Label(ig, text=self.t['balance']); self.w_ballbl.grid(row=2, column=0, sticky='w')
+        self.mt5_balance = ttk.Label(ig, text="—"); self.mt5_balance.grid(row=2, column=1, sticky='w', padx=(5, 20))
+        self.w_eqlbl = ttk.Label(ig, text=self.t['equity']); self.w_eqlbl.grid(row=2, column=2, sticky='w')
+        self.mt5_equity = ttk.Label(ig, text="—"); self.mt5_equity.grid(row=2, column=3, sticky='w', padx=(5, 0))
+        self.w_poslbl = ttk.Label(ig, text=self.t['positions']); self.w_poslbl.grid(row=3, column=0, sticky='w')
+        self.mt5_positions = ttk.Label(ig, text="—"); self.mt5_positions.grid(row=3, column=1, sticky='w', padx=(5, 20))
+        self.w_conn = ttk.Button(self.w_mt5f, text=self.t['connect'], command=self._try_connect_mt5); self.w_conn.pack(anchor='e', pady=(5, 0))
 
-        info_grid = ttk.Frame(mt5_frame)
-        info_grid.pack(fill='x', pady=(5, 0))
-
-        self.mt5_status = ttk.Label(info_grid, text="  Searching...", style='Status.TLabel')
-        self.mt5_status.grid(row=0, column=0, columnspan=4, sticky='w', pady=(0, 5))
-
-        ttk.Label(info_grid, text="Account:").grid(row=1, column=0, sticky='w')
-        self.mt5_account = ttk.Label(info_grid, text="—")
-        self.mt5_account.grid(row=1, column=1, sticky='w', padx=(5, 20))
-
-        ttk.Label(info_grid, text="Server:").grid(row=1, column=2, sticky='w')
-        self.mt5_server = ttk.Label(info_grid, text="—")
-        self.mt5_server.grid(row=1, column=3, sticky='w', padx=(5, 0))
-
-        ttk.Label(info_grid, text="Balance:").grid(row=2, column=0, sticky='w')
-        self.mt5_balance = ttk.Label(info_grid, text="—")
-        self.mt5_balance.grid(row=2, column=1, sticky='w', padx=(5, 20))
-
-        ttk.Label(info_grid, text="Equity:").grid(row=2, column=2, sticky='w')
-        self.mt5_equity = ttk.Label(info_grid, text="—")
-        self.mt5_equity.grid(row=2, column=3, sticky='w', padx=(5, 0))
-
-        ttk.Label(info_grid, text="Positions:").grid(row=3, column=0, sticky='w')
-        self.mt5_positions = ttk.Label(info_grid, text="—")
-        self.mt5_positions.grid(row=3, column=1, sticky='w', padx=(5, 20))
-
-        ttk.Button(mt5_frame, text="Connect", command=self._try_connect_mt5).pack(anchor='e', pady=(5, 0))
-
-        # Settings Frame
-        settings_frame = ttk.LabelFrame(self.root, text="Trading Settings", padding=10)
-        settings_frame.pack(fill='x', padx=10, pady=5)
-
+        # ── Settings ──
+        self.w_setf = ttk.LabelFrame(self.root, text=self.t['settings_frame'], padding=10); self.w_setf.pack(fill='x', padx=10, pady=5)
         self.use_signal_var = tk.BooleanVar(value=self.config['trading'].get('use_signal_settings', True))
-        ttk.Checkbutton(
-            settings_frame, text="Use signal's suggested risk (ignore custom settings below)",
-            variable=self.use_signal_var, command=self._toggle_custom
-        ).pack(anchor='w')
-
-        self.custom_frame = ttk.Frame(settings_frame)
-        self.custom_frame.pack(fill='x', pady=(5, 0))
-
-        ttk.Label(self.custom_frame, text="Risk %:").grid(row=0, column=0, sticky='w', padx=(0, 5))
+        self.w_usesig = ttk.Checkbutton(self.w_setf, text=self.t['use_signal'], variable=self.use_signal_var, command=self._toggle_custom)
+        self.w_usesig.pack(anchor='w')
+        cf = ttk.Frame(self.w_setf); cf.pack(fill='x', pady=(5, 0)); self.custom_frame = cf
+        self.w_risklbl = ttk.Label(cf, text=self.t['risk_pct']); self.w_risklbl.grid(row=0, column=0, sticky='w', padx=(0, 5))
         self.risk_var = tk.DoubleVar(value=self.config['trading'].get('custom_risk_pct', 1.0))
-        self.risk_entry = ttk.Entry(self.custom_frame, textvariable=self.risk_var, width=8)
-        self.risk_entry.grid(row=0, column=1, sticky='w')
-
-        ttk.Label(self.custom_frame, text="Max positions:").grid(row=0, column=2, sticky='w', padx=(20, 5))
+        ttk.Entry(cf, textvariable=self.risk_var, width=8).grid(row=0, column=1, sticky='w')
+        self.w_mposlbl = ttk.Label(cf, text=self.t['max_pos']); self.w_mposlbl.grid(row=0, column=2, sticky='w', padx=(20, 5))
         self.maxpos_var = tk.IntVar(value=self.config['trading'].get('max_positions', 5))
-        ttk.Entry(self.custom_frame, textvariable=self.maxpos_var, width=5).grid(row=0, column=3, sticky='w')
-
-        ttk.Label(self.custom_frame, text="Max per symbol:").grid(row=1, column=0, sticky='w', padx=(0, 5), pady=(3, 0))
+        ttk.Entry(cf, textvariable=self.maxpos_var, width=5).grid(row=0, column=3, sticky='w')
+        self.w_msymlbl = ttk.Label(cf, text=self.t['max_sym']); self.w_msymlbl.grid(row=1, column=0, sticky='w', padx=(0, 5), pady=(3, 0))
         self.maxsym_var = tk.IntVar(value=self.config['trading'].get('max_per_symbol', 1))
-        ttk.Entry(self.custom_frame, textvariable=self.maxsym_var, width=5).grid(row=1, column=1, sticky='w', pady=(3, 0))
-
+        ttk.Entry(cf, textvariable=self.maxsym_var, width=5).grid(row=1, column=1, sticky='w', pady=(3, 0))
         self._toggle_custom()
 
-        # Control Buttons
-        btn_frame = ttk.Frame(self.root)
-        btn_frame.pack(fill='x', padx=10, pady=5)
+        # ── Buttons ──
+        bf = ttk.Frame(self.root); bf.pack(fill='x', padx=10, pady=5)
+        self.start_btn = ttk.Button(bf, text=self.t['start'], command=self._start_copier); self.start_btn.pack(side='left', padx=5)
+        self.stop_btn = ttk.Button(bf, text=self.t['stop'], command=self._stop_copier, state='disabled'); self.stop_btn.pack(side='left', padx=5)
+        self.copier_status = ttk.Label(bf, text=self.t['stopped'], style='Status.TLabel'); self.copier_status.pack(side='right', padx=5)
 
-        self.start_btn = ttk.Button(btn_frame, text="  START  ", command=self._start_copier)
-        self.start_btn.pack(side='left', padx=5)
-
-        self.stop_btn = ttk.Button(btn_frame, text="  STOP  ", command=self._stop_copier, state='disabled')
-        self.stop_btn.pack(side='left', padx=5)
-
-        self.copier_status = ttk.Label(btn_frame, text="STOPPED", style='Status.TLabel')
-        self.copier_status.pack(side='right', padx=5)
-
-        # Log
-        log_frame = ttk.LabelFrame(self.root, text="Signal Log", padding=5)
-        log_frame.pack(fill='both', expand=True, padx=10, pady=(5, 10))
-
-        self.log_text = scrolledtext.ScrolledText(
-            log_frame, height=14, bg='#0d1117', fg='#c9d1d9',
-            font=('Consolas', 9), insertbackground='white', wrap='word'
-        )
+        # ── Log ──
+        self.w_logf = ttk.LabelFrame(self.root, text=self.t['log_frame'], padding=5); self.w_logf.pack(fill='both', expand=True, padx=10, pady=(5, 10))
+        self.log_text = scrolledtext.ScrolledText(self.w_logf, height=14, bg='#0d1117', fg='#c9d1d9', font=('Consolas', 9), insertbackground='white', wrap='word')
         self.log_text.pack(fill='both', expand=True)
 
+    # ── Language switch ──
+    def _set_lang(self, lang):
+        self.lang = lang
+        self.t = LANG[lang]
+        self.config['language'] = lang
+        save_config(self.config)
+        # Update all widget texts
+        self.w_title.configure(text=self.t['title'])
+        self.w_help.configure(text=self.t['help_btn'])
+        self.w_mt5f.configure(text=self.t['mt5_frame'])
+        self.w_pathlbl.configure(text=self.t['mt5_path'])
+        self.w_browse.configure(text=self.t['browse'])
+        self.w_hint.configure(text=self.t['path_hint'])
+        self.w_conn.configure(text=self.t['connect'])
+        self.w_acclbl.configure(text=self.t['account'])
+        self.w_srvlbl.configure(text=self.t['server'])
+        self.w_ballbl.configure(text=self.t['balance'])
+        self.w_eqlbl.configure(text=self.t['equity'])
+        self.w_poslbl.configure(text=self.t['positions'])
+        self.w_setf.configure(text=self.t['settings_frame'])
+        self.w_usesig.configure(text=self.t['use_signal'])
+        self.w_risklbl.configure(text=self.t['risk_pct'])
+        self.w_mposlbl.configure(text=self.t['max_pos'])
+        self.w_msymlbl.configure(text=self.t['max_sym'])
+        self.start_btn.configure(text=self.t['start'])
+        self.stop_btn.configure(text=self.t['stop'])
+        self.w_logf.configure(text=self.t['log_frame'])
+        # Update status labels
+        if self.connected:
+            self.mt5_status.configure(text=self.t['connected'])
+        else:
+            self.mt5_status.configure(text=self.t['not_found'])
+
     def _show_help(self):
-        help_text = """HOW TO USE IASMC SIGNAL COPIER
-
-STEP 1 — Choose your MT5 terminal
-   Click "Browse" and select the terminal64.exe file
-   of the MetaTrader 5 installation you want to use.
-   Leave empty to auto-detect.
-
-STEP 2 — Open MetaTrader 5 and login
-   Open the MT5 terminal you selected.
-   Login to your trading account (demo or real).
-   Make sure AutoTrading is ENABLED (button in toolbar).
-
-STEP 3 — Connect
-   Click "Connect" in this app.
-   Your account info should appear (account number,
-   server, balance).
-
-STEP 4 — Configure settings
-   Check "Use signal's suggested risk" to follow
-   the signal provider's risk management.
-   Or uncheck it to set your own risk %, max positions,
-   and max positions per symbol.
-
-STEP 5 — Start
-   Click START. The copier will listen for trading
-   signals and automatically execute them on your
-   MT5 account.
-
-   The log area below will show all signals received
-   and trades executed in real-time.
-
-SIGNALS HANDLED:
-   - Trade OPEN (new entry with SL/TP)
-   - Trade CLOSE (notification only)
-   - SL Modified (trailing stop / breakeven)
-   - Partial TP (close X% of position)
-   - Portfolio TP (close partial on all positions)
-"""
         win = tk.Toplevel(self.root)
-        win.title("How to Use")
-        win.geometry("500x520")
+        win.title(self.t['help_title'])
+        win.geometry("480x450")
         win.configure(bg='#1a1a2e')
         win.resizable(False, False)
-
-        text = scrolledtext.ScrolledText(
-            win, bg='#0d1117', fg='#c9d1d9', font=('Segoe UI', 10),
-            wrap='word', padx=15, pady=15
-        )
-        text.pack(fill='both', expand=True, padx=10, pady=10)
-        text.insert('1.0', help_text)
-        text.configure(state='disabled')
-
-        ttk.Button(win, text="Got it!", command=win.destroy).pack(pady=(0, 10))
+        txt = scrolledtext.ScrolledText(win, bg='#0d1117', fg='#c9d1d9', font=('Segoe UI', 10), wrap='word', padx=15, pady=15)
+        txt.pack(fill='both', expand=True, padx=10, pady=10)
+        txt.insert('1.0', self.t['help_text'])
+        txt.configure(state='disabled')
+        ttk.Button(win, text=self.t['got_it'], command=win.destroy).pack(pady=(0, 10))
 
     def _toggle_custom(self):
         state = 'disabled' if self.use_signal_var.get() else 'normal'
         for child in self.custom_frame.winfo_children():
-            try:
-                child.configure(state=state)
-            except Exception:
-                pass
+            try: child.configure(state=state)
+            except: pass
 
     def _browse_mt5(self):
-        from tkinter import filedialog
-        path = filedialog.askopenfilename(
-            title="Select MT5 terminal64.exe",
-            filetypes=[("MetaTrader 5", "terminal64.exe"), ("All files", "*.*")],
-            initialdir="C:/Program Files"
-        )
+        path = filedialog.askopenfilename(title="Select terminal64.exe", filetypes=[("MetaTrader 5", "terminal64.exe"), ("All", "*.*")], initialdir="C:/Program Files")
         if path:
             self.mt5_path_var.set(path)
             self.config['mt5_path'] = path
@@ -394,111 +271,76 @@ SIGNALS HANDLED:
         self.account_info = auto_connect(path)
         if self.account_info:
             self.connected = True
-            self.mt5_status.configure(text="  Connected", foreground='#00ff88')
+            self.mt5_status.configure(text=self.t['connected'], foreground='#00ff88')
             self.mt5_account.configure(text=str(self.account_info.login))
             self.mt5_server.configure(text=self.account_info.server)
             self.mt5_balance.configure(text=f"{self.account_info.balance:.2f} {self.account_info.currency}")
             self.mt5_equity.configure(text=f"{self.account_info.equity:.2f} {self.account_info.currency}")
             self.mt5_positions.configure(text=str(len(get_open_positions())))
-            self._add_log(f"MT5 connected: {self.account_info.login} @ {self.account_info.server}")
+            self._log(self.t['mt5_log'].format(self.account_info.login, self.account_info.server))
         else:
             self.connected = False
-            self.mt5_status.configure(text="  Not found — open MT5 and login first", foreground='#ff4444')
-            self._add_log("Please open MetaTrader 5 and login to your account, then click Reconnect.")
+            self.mt5_status.configure(text=self.t['not_found'], foreground='#ff4444')
+            self._log(self.t['mt5_please'])
 
-    def _update_equity(self):
+    def _update_loop(self):
         if self.connected:
             try:
-                equity = get_account_equity()
-                positions = get_open_positions()
-                if equity > 0:
-                    self.mt5_equity.configure(text=f"{equity:.2f}")
-                    self.mt5_positions.configure(text=str(len(positions)))
-            except Exception:
-                pass
-        # Sync UI values to config dict in real-time (copier reads from same dict)
+                eq = get_account_equity()
+                pos = get_open_positions()
+                if eq > 0:
+                    self.mt5_equity.configure(text=f"{eq:.2f}")
+                    self.mt5_positions.configure(text=str(len(pos)))
+            except: pass
         self.config['trading'] = {
             'use_signal_settings': self.use_signal_var.get(),
             'custom_risk_pct': self.risk_var.get(),
             'max_positions': self.maxpos_var.get(),
             'max_per_symbol': self.maxsym_var.get(),
         }
-        self.root.after(5000, self._update_equity)
+        self.root.after(5000, self._update_loop)
 
-    def _add_log(self, msg: str):
-        timestamp = datetime.now().strftime('%H:%M:%S') if 'datetime' in dir() else ''
-        from datetime import datetime
-        timestamp = datetime.now().strftime('%H:%M:%S')
-        self.log_text.insert('end', f"[{timestamp}] {msg}\n")
+    def _log(self, msg):
+        ts = datetime.now().strftime('%H:%M:%S')
+        self.log_text.insert('end', f"[{ts}] {msg}\n")
         self.log_text.see('end')
 
     def _start_copier(self):
         if not self.connected:
-            messagebox.showerror("Error", "MT5 not connected.\n\nPlease open MetaTrader 5, login to your account, then click Reconnect.")
+            messagebox.showerror("Error", self.t['mt5_err'])
             return
-
-        self.config['trading'] = {
-            'use_signal_settings': self.use_signal_var.get(),
-            'custom_risk_pct': self.risk_var.get(),
-            'max_positions': self.maxpos_var.get(),
-            'max_per_symbol': self.maxsym_var.get(),
-        }
         self.config['mt5_path'] = self.mt5_path_var.get().strip()
         save_config(self.config)
-
-        self.copier = SignalCopier(
-            config=self.config,
-            on_log=lambda msg: self.root.after(0, self._add_log, msg),
-            on_trade=lambda t: self.root.after(0, self._on_trade, t),
-            on_status=lambda s: self.root.after(0, self._on_status, s),
-        )
-
+        self.copier = SignalCopier(config=self.config, on_log=lambda m: self.root.after(0, self._log, m), on_trade=lambda t: self.root.after(0, self._on_trade, t), on_status=lambda s: self.root.after(0, self._on_status, s))
         self.loop = asyncio.new_event_loop()
-        self.copier_thread = threading.Thread(target=self._run_copier, daemon=True)
+        self.copier_thread = threading.Thread(target=lambda: (asyncio.set_event_loop(self.loop), self.loop.run_until_complete(self.copier.start())), daemon=True)
         self.copier_thread.start()
-
-        self.start_btn.configure(state='disabled')
-        self.stop_btn.configure(state='normal')
-        self.copier_status.configure(text="STARTING...", foreground='#ffaa00')
-
-    def _run_copier(self):
-        asyncio.set_event_loop(self.loop)
-        self.loop.run_until_complete(self.copier.start())
+        self.start_btn.configure(state='disabled'); self.stop_btn.configure(state='normal')
+        self.copier_status.configure(text=self.t['starting'], foreground='#ffaa00')
 
     def _stop_copier(self):
-        if self.copier and self.loop:
-            asyncio.run_coroutine_threadsafe(self.copier.stop(), self.loop)
-        self.start_btn.configure(state='normal')
-        self.stop_btn.configure(state='disabled')
-        self.copier_status.configure(text="STOPPED", foreground='#ffaa00')
+        if self.copier and self.loop: asyncio.run_coroutine_threadsafe(self.copier.stop(), self.loop)
+        self.start_btn.configure(state='normal'); self.stop_btn.configure(state='disabled')
+        self.copier_status.configure(text=self.t['stopped'], foreground='#ffaa00')
 
-    def _on_trade(self, trade: dict):
-        self._add_log(f"TRADE EXECUTED: {trade['direction'].upper()} {trade['symbol']} "
-                      f"lot={trade['lot']} @ {trade['entry']}")
+    def _on_trade(self, t):
+        self._log(f"TRADE: {t['direction'].upper()} {t['symbol']} lot={t['lot']} @ {t['entry']}")
 
-    def _on_status(self, status: str):
-        if status == 'running':
-            self.copier_status.configure(text="RUNNING", foreground='#00ff88')
+    def _on_status(self, status):
+        if status == 'running': self.copier_status.configure(text=self.t['running'], foreground='#00ff88')
         else:
-            self.copier_status.configure(text="STOPPED", foreground='#ffaa00')
-            self.start_btn.configure(state='normal')
-            self.stop_btn.configure(state='disabled')
+            self.copier_status.configure(text=self.t['stopped'], foreground='#ffaa00')
+            self.start_btn.configure(state='normal'); self.stop_btn.configure(state='disabled')
 
     def run(self):
         self.root.protocol('WM_DELETE_WINDOW', self._on_close)
         self.root.mainloop()
 
     def _on_close(self):
-        if self.copier:
-            self._stop_copier()
+        if self.copier: self._stop_copier()
         disconnect()
         self.root.destroy()
 
 
-def main():
-    app = SignalCopierGUI()
-    app.run()
-
-
 if __name__ == '__main__':
-    main()
+    SignalCopierGUI().run()
