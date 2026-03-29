@@ -1,0 +1,13 @@
+{
+  "telegram": {
+    "api_id": 24949940,
+    "api_hash": "a54ff70e9442347324b69176bf875a96",
+    "channel": "@IASMC_signals"
+  },
+  "trading": {
+    "use_signal_settings": true,
+    "custom_risk_pct": 1.0,
+    "max_positions": 5,
+    "max_per_symbol": 1
+  }
+}
