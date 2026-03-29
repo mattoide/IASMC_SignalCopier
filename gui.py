@@ -31,8 +31,8 @@ def save_config(config: dict):
 class SignalCopierGUI:
     def __init__(self):
         self.root = tk.Tk()
-        self.root.title("SignalCopier")
-        self.root.geometry("600x550")
+        self.root.title("IASMC Signal Copier")
+        self.root.geometry("750x700")
         self.root.configure(bg='#1a1a2e')
         self.root.resizable(True, True)
 
@@ -58,8 +58,11 @@ class SignalCopierGUI:
         style.configure('TLabelframe.Label', background='#1a1a2e', foreground='#e0e0e0', font=('Segoe UI', 10, 'bold'))
         style.configure('TCheckbutton', background='#1a1a2e', foreground='#e0e0e0')
 
-        # Title
-        ttk.Label(self.root, text="SIGNAL COPIER", style='Title.TLabel').pack(pady=(10, 5))
+        # Title + Help button
+        title_frame = ttk.Frame(self.root)
+        title_frame.pack(fill='x', padx=10, pady=(10, 5))
+        ttk.Label(title_frame, text="IASMC SIGNAL COPIER", style='Title.TLabel').pack(side='left')
+        ttk.Button(title_frame, text="  ? How to use  ", command=self._show_help).pack(side='right')
 
         # MT5 Status Frame
         mt5_frame = ttk.LabelFrame(self.root, text="MetaTrader 5", padding=10)
@@ -152,10 +155,65 @@ class SignalCopierGUI:
         log_frame.pack(fill='both', expand=True, padx=10, pady=(5, 10))
 
         self.log_text = scrolledtext.ScrolledText(
-            log_frame, height=10, bg='#0d1117', fg='#c9d1d9',
+            log_frame, height=18, bg='#0d1117', fg='#c9d1d9',
             font=('Consolas', 9), insertbackground='white', wrap='word'
         )
         self.log_text.pack(fill='both', expand=True)
+
+    def _show_help(self):
+        help_text = """HOW TO USE IASMC SIGNAL COPIER
+
+STEP 1 — Choose your MT5 terminal
+   Click "Browse" and select the terminal64.exe file
+   of the MetaTrader 5 installation you want to use.
+   Leave empty to auto-detect.
+
+STEP 2 — Open MetaTrader 5 and login
+   Open the MT5 terminal you selected.
+   Login to your trading account (demo or real).
+   Make sure AutoTrading is ENABLED (button in toolbar).
+
+STEP 3 — Connect
+   Click "Connect" in this app.
+   Your account info should appear (account number,
+   server, balance).
+
+STEP 4 — Configure settings
+   Check "Use signal's suggested risk" to follow
+   the signal provider's risk management.
+   Or uncheck it to set your own risk %, max positions,
+   and max positions per symbol.
+
+STEP 5 — Start
+   Click START. The copier will listen for trading
+   signals and automatically execute them on your
+   MT5 account.
+
+   The log area below will show all signals received
+   and trades executed in real-time.
+
+SIGNALS HANDLED:
+   - Trade OPEN (new entry with SL/TP)
+   - Trade CLOSE (notification only)
+   - SL Modified (trailing stop / breakeven)
+   - Partial TP (close X% of position)
+   - Portfolio TP (close partial on all positions)
+"""
+        win = tk.Toplevel(self.root)
+        win.title("How to Use")
+        win.geometry("500x520")
+        win.configure(bg='#1a1a2e')
+        win.resizable(False, False)
+
+        text = scrolledtext.ScrolledText(
+            win, bg='#0d1117', fg='#c9d1d9', font=('Segoe UI', 10),
+            wrap='word', padx=15, pady=15
+        )
+        text.pack(fill='both', expand=True, padx=10, pady=10)
+        text.insert('1.0', help_text)
+        text.configure(state='disabled')
+
+        ttk.Button(win, text="Got it!", command=win.destroy).pack(pady=(0, 10))
 
     def _toggle_custom(self):
         state = 'disabled' if self.use_signal_var.get() else 'normal'
