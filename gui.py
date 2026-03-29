@@ -65,8 +65,21 @@ class SignalCopierGUI:
         mt5_frame = ttk.LabelFrame(self.root, text="MetaTrader 5", padding=10)
         mt5_frame.pack(fill='x', padx=10, pady=5)
 
+        # MT5 Path selector
+        path_frame = ttk.Frame(mt5_frame)
+        path_frame.pack(fill='x', pady=(0, 5))
+
+        ttk.Label(path_frame, text="MT5 Path:").pack(side='left')
+        self.mt5_path_var = tk.StringVar(value=self.config.get('mt5_path', ''))
+        self.mt5_path_entry = ttk.Entry(path_frame, textvariable=self.mt5_path_var, width=50)
+        self.mt5_path_entry.pack(side='left', padx=5, fill='x', expand=True)
+        ttk.Button(path_frame, text="Browse", command=self._browse_mt5).pack(side='left')
+
+        ttk.Label(mt5_frame, text="Leave empty to auto-detect the running terminal",
+                  foreground='#888888', font=('Segoe UI', 8)).pack(anchor='w')
+
         info_grid = ttk.Frame(mt5_frame)
-        info_grid.pack(fill='x')
+        info_grid.pack(fill='x', pady=(5, 0))
 
         self.mt5_status = ttk.Label(info_grid, text="  Searching...", style='Status.TLabel')
         self.mt5_status.grid(row=0, column=0, columnspan=4, sticky='w', pady=(0, 5))
@@ -91,7 +104,7 @@ class SignalCopierGUI:
         self.mt5_positions = ttk.Label(info_grid, text="—")
         self.mt5_positions.grid(row=3, column=1, sticky='w', padx=(5, 20))
 
-        ttk.Button(mt5_frame, text="Reconnect", command=self._try_connect_mt5).pack(anchor='e', pady=(5, 0))
+        ttk.Button(mt5_frame, text="Connect", command=self._try_connect_mt5).pack(anchor='e', pady=(5, 0))
 
         # Settings Frame
         settings_frame = ttk.LabelFrame(self.root, text="Trading Settings", padding=10)
@@ -152,8 +165,22 @@ class SignalCopierGUI:
             except Exception:
                 pass
 
+    def _browse_mt5(self):
+        from tkinter import filedialog
+        path = filedialog.askopenfilename(
+            title="Select MT5 terminal64.exe",
+            filetypes=[("MetaTrader 5", "terminal64.exe"), ("All files", "*.*")],
+            initialdir="C:/Program Files"
+        )
+        if path:
+            self.mt5_path_var.set(path)
+            self.config['mt5_path'] = path
+            save_config(self.config)
+            self._try_connect_mt5()
+
     def _try_connect_mt5(self):
-        self.account_info = auto_connect()
+        path = self.mt5_path_var.get().strip() or None
+        self.account_info = auto_connect(path)
         if self.account_info:
             self.connected = True
             self.mt5_status.configure(text="  Connected", foreground='#00ff88')
@@ -198,6 +225,7 @@ class SignalCopierGUI:
             'max_positions': self.maxpos_var.get(),
             'max_per_symbol': self.maxsym_var.get(),
         }
+        self.config['mt5_path'] = self.mt5_path_var.get().strip()
         save_config(self.config)
 
         self.copier = SignalCopier(

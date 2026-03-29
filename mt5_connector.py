@@ -22,12 +22,17 @@ class AccountInfo:
     name: str
 
 
-def auto_connect() -> Optional[AccountInfo]:
+def auto_connect(path: str = None) -> Optional[AccountInfo]:
     """
-    Connect to the already-running MT5 terminal.
+    Connect to MT5 terminal.
+    If path is provided, connects to that specific terminal.
+    Otherwise auto-detects the running terminal.
     Returns AccountInfo if successful, None otherwise.
     """
-    if not mt5.initialize():
+    kwargs = {}
+    if path:
+        kwargs['path'] = path
+    if not mt5.initialize(**kwargs):
         log.error(f"MT5 initialize failed: {mt5.last_error()}")
         return None
 
