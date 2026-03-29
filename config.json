@@ -4,5 +4,6 @@
     "custom_risk_pct": 1.0,
     "max_positions": 5,
     "max_per_symbol": 1
-  }
+  },
+  "mt5_path": "C:/Program Files/MT5 Backtest/XM/terminal64.exe"
 }

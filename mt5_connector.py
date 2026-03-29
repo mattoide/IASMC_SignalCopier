@@ -58,11 +58,41 @@ def disconnect():
     mt5.shutdown()
 
 
+SYMBOL_ALIASES = {
+    'XAUUSD': ['XAUUSD', 'GOLD', 'GOLD#', 'XAUUSD#', 'XAUUSD.cash'],
+    'XAGUSD': ['XAGUSD', 'SILVER', 'SILVER#', 'XAGUSD#'],
+    'NAS100': ['NAS100', 'US100', 'US100.cash', 'US100Cash#', 'USATECHIDXUSD'],
+    'SP500': ['SP500', 'US500', 'US500.cash', 'US500Cash#', 'USA500IDXUSD'],
+    'US30': ['US30', 'US30.cash', 'US30Cash#', 'USA30IDXUSD'],
+    'WTIUSD': ['WTIUSD', 'USOIL', 'USOIL.cash', 'OILCash#'],
+    'GER40': ['GER40', 'GER40.cash', 'GER40Cash#', 'DEUIDXEUR'],
+    'FRA40': ['FRA40', 'FRA40.cash', 'FRA40Cash#', 'FRAIDXEUR'],
+    'JPN225': ['JPN225', 'JP225', 'JP225.cash', 'JP225Cash#', 'JPNIDXJPY'],
+    'UK100': ['UK100', 'UK100.cash', 'UK100Cash#', 'GBRIDXGBP'],
+    'HK50': ['HK50', 'HK50.cash', 'HK50Cash#', 'HKGIDXHKD'],
+    'AUS200': ['AUS200', 'AUS200.cash', 'AUS200Cash#', 'AUSIDXAUD'],
+}
+
+
 def get_symbol_info(symbol: str) -> Optional[dict]:
-    """Get symbol info from MT5. Tries common broker suffixes."""
-    suffixes = ['', '#', '.cash', 'Cash#']
-    for suffix in suffixes:
-        test_sym = symbol + suffix
+    """Get symbol info from MT5. Tries aliases and common broker suffixes."""
+    # Build candidate list: aliases first, then generic suffixes
+    candidates = []
+    norm = symbol.upper().replace('#', '').replace('.CASH', '').replace('CASH', '')
+    for key, aliases in SYMBOL_ALIASES.items():
+        if norm in [a.upper().replace('#', '').replace('.CASH', '').replace('CASH', '') for a in [key] + aliases]:
+            candidates.extend(aliases)
+            break
+    if not candidates:
+        # Generic: try symbol as-is, then with common broker suffixes
+        suffixes = ['', '#', '.cash', 'Cash#', '.cash#']
+        candidates = [symbol + s for s in suffixes]
+        # Also try without suffix if symbol already has one
+        bare = symbol.replace('#', '').replace('.cash', '')
+        if bare != symbol:
+            candidates = [bare] + candidates
+
+    for test_sym in candidates:
         info = mt5.symbol_info(test_sym)
         if info and info.visible:
             return {
