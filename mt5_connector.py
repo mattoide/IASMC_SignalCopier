@@ -138,7 +138,13 @@ def get_symbol_info(symbol: str) -> Optional[dict]:
 
     for test_sym in candidates:
         info = mt5.symbol_info(test_sym)
-        if info and info.visible:
+        if info is None:
+            continue
+        # Enable symbol in MarketWatch if not visible
+        if not info.visible:
+            mt5.symbol_select(test_sym, True)
+            info = mt5.symbol_info(test_sym)
+        if info:
             return {
                 'name': test_sym,
                 'point': info.point,
