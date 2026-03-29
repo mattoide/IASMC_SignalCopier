@@ -238,6 +238,99 @@ def get_open_positions(magic: int = 12121) -> list:
     return [p for p in positions if p.magic == magic]
 
 
+def find_position_by_symbol(symbol: str, direction: str = None, magic: int = 12121) -> Optional[object]:
+    """Find an open position by symbol (tries aliases). Returns MT5 position object."""
+    positions = get_open_positions(magic)
+    sym_info = get_symbol_info(symbol)
+    mt5_name = sym_info['name'] if sym_info else symbol
+
+    for p in positions:
+        if p.symbol == mt5_name:
+            if direction is None:
+                return p
+            pos_dir = 'buy' if p.type == 0 else 'sell'
+            if pos_dir == direction.lower():
+                return p
+    return None
+
+
+def modify_sl(ticket: int, new_sl: float) -> dict:
+    """Modify SL of an open position."""
+    pos = None
+    positions = mt5.positions_get(ticket=ticket)
+    if positions:
+        pos = positions[0]
+    if not pos:
+        return {'success': False, 'error': f'Position {ticket} not found'}
+
+    request = {
+        'action': mt5.TRADE_ACTION_SLTP,
+        'position': ticket,
+        'symbol': pos.symbol,
+        'sl': new_sl,
+        'tp': pos.tp,
+        'magic': pos.magic,
+    }
+    result = mt5.order_send(request)
+    if result and result.retcode == mt5.TRADE_RETCODE_DONE:
+        return {'success': True}
+    return {'success': False, 'error': f'retcode={result.retcode if result else "None"}, comment={result.comment if result else ""}'}
+
+
+def close_partial(ticket: int, volume_to_close: float) -> dict:
+    """Close partial volume of a position."""
+    pos = None
+    positions = mt5.positions_get(ticket=ticket)
+    if positions:
+        pos = positions[0]
+    if not pos:
+        return {'success': False, 'error': f'Position {ticket} not found'}
+
+    # Determine close direction
+    if pos.type == 0:  # BUY -> close with SELL
+        order_type = mt5.ORDER_TYPE_SELL
+        price = mt5.symbol_info_tick(pos.symbol).bid
+    else:  # SELL -> close with BUY
+        order_type = mt5.ORDER_TYPE_BUY
+        price = mt5.symbol_info_tick(pos.symbol).ask
+
+    # Round volume to step
+    info = mt5.symbol_info(pos.symbol)
+    step = info.volume_step if info else 0.01
+    volume_to_close = round(volume_to_close / step) * step
+    volume_to_close = max(volume_to_close, info.volume_min if info else 0.01)
+    volume_to_close = min(volume_to_close, pos.volume)
+
+    request = {
+        'action': mt5.TRADE_ACTION_DEAL,
+        'position': ticket,
+        'symbol': pos.symbol,
+        'volume': round(volume_to_close, 2),
+        'type': order_type,
+        'price': price,
+        'deviation': 20,
+        'magic': pos.magic,
+        'comment': 'SignalCopier partial',
+        'type_time': mt5.ORDER_TIME_GTC,
+        'type_filling': mt5.ORDER_FILLING_IOC,
+    }
+    result = mt5.order_send(request)
+    if result and result.retcode == mt5.TRADE_RETCODE_DONE:
+        return {'success': True, 'volume_closed': volume_to_close}
+    return {'success': False, 'error': f'retcode={result.retcode if result else "None"}'}
+
+
+def close_position(ticket: int) -> dict:
+    """Close a full position."""
+    pos = None
+    positions = mt5.positions_get(ticket=ticket)
+    if positions:
+        pos = positions[0]
+    if not pos:
+        return {'success': False, 'error': f'Position {ticket} not found'}
+    return close_partial(ticket, pos.volume)
+
+
 def get_account_equity() -> float:
     """Get current account equity."""
     info = mt5.account_info()

@@ -1,108 +1,183 @@
 """
-Parse IASMC signal provider messages from Telegram.
+Parse ALL IASMC signal provider messages from Telegram.
 
-Expected format:
-    📈 SIGNAL: BUY XAUUSD
-
-    Entry: 4450.50
-    Stop Loss: 4440.00 (-105.0 pips)
-    Take Profit: 4465.00 (+145.0 pips)
-    Risk/Reward: 1:1.4
-    Suggested Risk: 0.5%
-
-    27 Mar 2026 14:30 UTC
+Signal types:
+1. OPEN:  "📈 SIGNAL: BUY XAUUSD" — Entry/SL/TP/Risk
+2. CLOSE: "✅ RESULT: BUY XAUUSD -- Win (+1.40R)" — Trade closed
+3. SL:    "🛡️ UPDATE: BUY XAUUSD -- SL Modified (Breakeven+)" — Move SL
+4. PARTIAL:"🎯 UPDATE: SELL US30.cash -- Partial TP" — Close partial
+5. PORTFOLIO:"💰 UPDATE: Portfolio Take Profit 💰" — Close all partially
 """
 
 import re
-from dataclasses import dataclass
-from typing import Optional
+from dataclasses import dataclass, field
+from typing import Optional, List
 
 
 @dataclass
-class ParsedSignal:
-    symbol: str
-    direction: str  # 'buy' or 'sell'
-    entry: float
-    stop_loss: float
-    take_profit: float
-    risk_reward: float
-    suggested_risk: float
-    raw_text: str
+class SignalOpen:
+    type: str = 'open'
+    symbol: str = ''
+    direction: str = ''
+    entry: float = 0.0
+    stop_loss: float = 0.0
+    take_profit: float = 0.0
+    risk_reward: float = 0.0
+    suggested_risk: float = 1.0
+    raw_text: str = ''
 
 
-def parse_signal(text: str) -> Optional[ParsedSignal]:
-    """Parse an IASMC signal message. Returns None if not a valid signal."""
-    if 'SIGNAL:' not in text:
+@dataclass
+class SignalClose:
+    type: str = 'close'
+    symbol: str = ''
+    direction: str = ''
+    result: str = ''
+    r_multiple: float = 0.0
+    pips: float = 0.0
+    exit_reason: str = ''
+    raw_text: str = ''
+
+
+@dataclass
+class SignalSLModified:
+    type: str = 'sl_modified'
+    symbol: str = ''
+    direction: str = ''
+    new_sl: float = 0.0
+    old_sl: float = 0.0
+    status: str = ''
+    raw_text: str = ''
+
+
+@dataclass
+class SignalPartialTP:
+    type: str = 'partial_tp'
+    symbol: str = ''
+    direction: str = ''
+    closed_pct: float = 0.0
+    close_price: float = 0.0
+    remaining_pct: float = 0.0
+    raw_text: str = ''
+
+
+@dataclass
+class SignalPortfolioTP:
+    type: str = 'portfolio_tp'
+    details: list = field(default_factory=list)
+    total_locked_pct: float = 0.0
+    floating_pct: float = 0.0
+    raw_text: str = ''
+
+
+def parse_message(text: str):
+    """Parse any IASMC signal message. Returns typed dataclass or None."""
+    if not text:
         return None
+    if 'SIGNAL:' in text and 'Entry:' in text:
+        return _parse_open(text)
+    if 'RESULT:' in text:
+        return _parse_close(text)
+    if 'SL Modified' in text:
+        return _parse_sl_modified(text)
+    if 'Partial TP' in text:
+        return _parse_partial_tp(text)
+    if 'Portfolio Take Profit' in text:
+        return _parse_portfolio_tp(text)
+    return None
 
+
+def _parse_open(text):
     try:
-        # Direction + Symbol: "📈 SIGNAL: BUY XAUUSD" or "📉 SIGNAL: SELL GBPUSD"
-        sig_match = re.search(r'SIGNAL:\s*(BUY|SELL)\s+(\S+)', text, re.IGNORECASE)
-        if not sig_match:
-            return None
-        direction = sig_match.group(1).lower()
-        symbol = sig_match.group(2).strip()
-
-        # Entry price
-        entry_match = re.search(r'Entry:\s*([\d.]+)', text)
-        if not entry_match:
-            return None
-        entry = float(entry_match.group(1))
-
-        # Stop Loss
-        sl_match = re.search(r'Stop Loss:\s*([\d.]+)', text)
-        if not sl_match:
-            return None
-        stop_loss = float(sl_match.group(1))
-
-        # Take Profit
-        tp_match = re.search(r'Take Profit:\s*([\d.]+)', text)
-        if not tp_match:
-            return None
-        take_profit = float(tp_match.group(1))
-
-        # Risk/Reward (optional)
-        rr_match = re.search(r'Risk/Reward:\s*1:([\d.]+)', text)
-        risk_reward = float(rr_match.group(1)) if rr_match else 0.0
-
-        # Suggested Risk (optional)
-        risk_match = re.search(r'Suggested Risk:\s*([\d.]+)%', text)
-        suggested_risk = float(risk_match.group(1)) if risk_match else 1.0
-
-        return ParsedSignal(
-            symbol=symbol,
-            direction=direction,
-            entry=entry,
-            stop_loss=stop_loss,
-            take_profit=take_profit,
-            risk_reward=risk_reward,
-            suggested_risk=suggested_risk,
+        sig = re.search(r'SIGNAL:\s*(BUY|SELL)\s+(\S+)', text, re.I)
+        if not sig: return None
+        entry = re.search(r'Entry:\s*([\d.]+)', text)
+        sl = re.search(r'Stop Loss:\s*([\d.]+)', text)
+        tp = re.search(r'Take Profit:\s*([\d.]+)', text)
+        rr = re.search(r'Risk/Reward:\s*1:([\d.]+)', text)
+        risk = re.search(r'Suggested Risk:\s*([\d.]+)%', text)
+        if not all([entry, sl, tp]): return None
+        return SignalOpen(
+            symbol=sig.group(2).strip(), direction=sig.group(1).lower(),
+            entry=float(entry.group(1)), stop_loss=float(sl.group(1)),
+            take_profit=float(tp.group(1)),
+            risk_reward=float(rr.group(1)) if rr else 0.0,
+            suggested_risk=float(risk.group(1)) if risk else 1.0,
             raw_text=text,
         )
-
     except (ValueError, AttributeError):
         return None
 
 
-def parse_close_signal(text: str) -> Optional[dict]:
-    """Parse a trade closed message. Returns dict with symbol, side, result."""
-    if 'CLOSED' not in text.upper() and 'RESULT' not in text.upper():
+def _parse_close(text):
+    try:
+        m = re.search(r'RESULT:\s*(BUY|SELL)\s+(\S+)\s*--\s*(\w+)', text, re.I)
+        if not m: return None
+        r = re.search(r'([+-]?[\d.]+)R\)', text)
+        pips = re.search(r'Pips:\s*([+-]?[\d.]+)', text)
+        exit_r = re.search(r'Exit Reason:\s*(.+?)(?:\n|$)', text)
+        result = m.group(3).lower()
+        if result in ('win', 'tp'): result = 'win'
+        elif result in ('loss', 'sl'): result = 'loss'
+        else: result = 'breakeven'
+        return SignalClose(
+            symbol=m.group(2).strip(), direction=m.group(1).lower(), result=result,
+            r_multiple=float(r.group(1)) if r else 0.0,
+            pips=float(pips.group(1)) if pips else 0.0,
+            exit_reason=exit_r.group(1).strip() if exit_r else '',
+            raw_text=text,
+        )
+    except (ValueError, AttributeError):
         return None
 
+
+def _parse_sl_modified(text):
     try:
-        # "✅ RESULT: BUY XAUUSD" or "TRADE CLOSED"
-        match = re.search(r'(?:RESULT|CLOSED).*?(BUY|SELL)\s+(\S+)', text, re.IGNORECASE)
-        if not match:
-            return None
+        m = re.search(r'UPDATE:\s*(BUY|SELL)\s+(\S+)\s*--\s*SL Modified\s*\(([^)]+)\)', text, re.I)
+        if not m: return None
+        old = re.search(r'Old SL:\s*([\d.]+)', text)
+        new = re.search(r'New SL:\s*([\d.]+)', text)
+        return SignalSLModified(
+            symbol=m.group(2).strip(), direction=m.group(1).lower(),
+            new_sl=float(new.group(1)) if new else 0.0,
+            old_sl=float(old.group(1)) if old else 0.0,
+            status=m.group(3), raw_text=text,
+        )
+    except (ValueError, AttributeError):
+        return None
 
-        pnl_match = re.search(r'P&?L:\s*([+-]?[\d.]+)', text)
-        pips_match = re.search(r'([+-]?[\d.]+)\s*pips', text, re.IGNORECASE)
 
-        return {
-            'direction': match.group(1).lower(),
-            'symbol': match.group(2).strip(),
-            'pnl': float(pnl_match.group(1)) if pnl_match else None,
-            'pips': float(pips_match.group(1)) if pips_match else None,
-        }
+def _parse_partial_tp(text):
+    try:
+        m = re.search(r'UPDATE:\s*(BUY|SELL)\s+(\S+)\s*--\s*Partial TP', text, re.I)
+        if not m: return None
+        closed = re.search(r'Closed\s+([\d.]+)%.*?at\s+([\d.]+)', text)
+        remaining = re.search(r'Remaining:\s+([\d.]+)%', text)
+        return SignalPartialTP(
+            symbol=m.group(2).strip(), direction=m.group(1).lower(),
+            closed_pct=float(closed.group(1)) if closed else 25.0,
+            close_price=float(closed.group(2)) if closed else 0.0,
+            remaining_pct=float(remaining.group(1)) if remaining else 75.0,
+            raw_text=text,
+        )
+    except (ValueError, AttributeError):
+        return None
+
+
+def _parse_portfolio_tp(text):
+    try:
+        details = []
+        for line in text.split('\n'):
+            d = re.search(r'(\S+):\s*([\d.]+)/([\d.]+)\s*lots\s*\(([+-]?[\d.]+)%\)', line)
+            if d:
+                details.append((d.group(1), float(d.group(2)), float(d.group(3)), float(d.group(4))))
+        locked = re.search(r'Total Locked:\s*([+-]?[\d.]+)%', text)
+        floating = re.search(r'Remaining Float:\s*([+-]?[\d.]+)%', text)
+        return SignalPortfolioTP(
+            details=details,
+            total_locked_pct=float(locked.group(1)) if locked else 0.0,
+            floating_pct=float(floating.group(1)) if floating else 0.0,
+            raw_text=text,
+        )
     except (ValueError, AttributeError):
         return None
