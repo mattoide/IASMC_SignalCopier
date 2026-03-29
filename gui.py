@@ -263,6 +263,13 @@ SIGNALS HANDLED:
                     self.mt5_positions.configure(text=str(len(positions)))
             except Exception:
                 pass
+        # Sync UI values to config dict in real-time (copier reads from same dict)
+        self.config['trading'] = {
+            'use_signal_settings': self.use_signal_var.get(),
+            'custom_risk_pct': self.risk_var.get(),
+            'max_positions': self.maxpos_var.get(),
+            'max_per_symbol': self.maxsym_var.get(),
+        }
         self.root.after(5000, self._update_equity)
 
     def _add_log(self, msg: str):
