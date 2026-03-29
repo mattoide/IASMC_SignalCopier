@@ -15,6 +15,145 @@ from copier import SignalCopier
 
 CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json')
 
+LANG = {
+    'en': {
+        'title': 'IASMC SIGNAL COPIER',
+        'help_btn': '  ? How to use  ',
+        'mt5_frame': 'MetaTrader 5',
+        'mt5_path': 'MT5 Path:',
+        'browse': 'Browse',
+        'path_hint': 'Leave empty to auto-detect the running terminal',
+        'connect': 'Connect',
+        'account': 'Account:',
+        'server': 'Server:',
+        'balance': 'Balance:',
+        'equity': 'Equity:',
+        'positions': 'Positions:',
+        'searching': '  Searching...',
+        'connected': '  Connected',
+        'not_found': '  Not found — open MT5 and login first',
+        'settings_frame': 'Trading Settings',
+        'use_signal': "Use signal's suggested risk (ignore custom settings below)",
+        'risk_pct': 'Risk %:',
+        'max_pos': 'Max positions:',
+        'max_sym': 'Max per symbol:',
+        'start': '  START  ',
+        'stop': '  STOP  ',
+        'stopped': 'STOPPED',
+        'starting': 'STARTING...',
+        'running': 'RUNNING',
+        'log_frame': 'Signal Log',
+        'mt5_connected_log': 'MT5 connected: {} @ {}',
+        'mt5_please_open': 'Please open MetaTrader 5 and login to your account, then click Connect.',
+        'mt5_not_connected_err': 'MT5 not connected.\n\nPlease open MetaTrader 5, login to your account, then click Connect.',
+        'help_title': 'How to Use',
+        'help_text': """HOW TO USE IASMC SIGNAL COPIER
+
+STEP 1 — Choose your MT5 terminal
+   Click "Browse" and select the terminal64.exe file
+   of the MetaTrader 5 installation you want to use.
+   Leave empty to auto-detect.
+
+STEP 2 — Open MetaTrader 5 and login
+   Open the MT5 terminal you selected.
+   Login to your trading account (demo or real).
+   Make sure AutoTrading is ENABLED (button in toolbar).
+
+STEP 3 — Connect
+   Click "Connect" in this app.
+   Your account info should appear (account number,
+   server, balance).
+
+STEP 4 — Configure settings
+   Check "Use signal's suggested risk" to follow
+   the signal provider's risk management.
+   Or uncheck it to set your own risk %, max positions,
+   and max positions per symbol.
+
+STEP 5 — Start
+   Click START. The copier will listen for trading
+   signals and automatically execute them on your
+   MT5 account.
+
+SIGNALS HANDLED:
+   - Trade OPEN (new entry with SL/TP)
+   - Trade CLOSE (notification only)
+   - SL Modified (trailing stop / breakeven)
+   - Partial TP (close X% of position)
+   - Portfolio TP (close partial on all positions)
+""",
+        'got_it': 'Got it!',
+    },
+    'it': {
+        'title': 'IASMC SIGNAL COPIER',
+        'help_btn': '  ? Come usare  ',
+        'mt5_frame': 'MetaTrader 5',
+        'mt5_path': 'Percorso MT5:',
+        'browse': 'Sfoglia',
+        'path_hint': 'Lascia vuoto per rilevare automaticamente il terminale aperto',
+        'connect': 'Connetti',
+        'account': 'Conto:',
+        'server': 'Server:',
+        'balance': 'Saldo:',
+        'equity': 'Equity:',
+        'positions': 'Posizioni:',
+        'searching': '  Ricerca...',
+        'connected': '  Connesso',
+        'not_found': '  Non trovato — apri MT5 e fai il login',
+        'settings_frame': 'Impostazioni Trading',
+        'use_signal': "Usa il rischio suggerito dal segnale (ignora impostazioni sotto)",
+        'risk_pct': 'Rischio %:',
+        'max_pos': 'Max posizioni:',
+        'max_sym': 'Max per simbolo:',
+        'start': '  AVVIA  ',
+        'stop': '  FERMA  ',
+        'stopped': 'FERMO',
+        'starting': 'AVVIO...',
+        'running': 'ATTIVO',
+        'log_frame': 'Log Segnali',
+        'mt5_connected_log': 'MT5 connesso: {} @ {}',
+        'mt5_please_open': 'Apri MetaTrader 5, fai login nel tuo conto e clicca Connetti.',
+        'mt5_not_connected_err': 'MT5 non connesso.\n\nApri MetaTrader 5, fai login nel tuo conto e clicca Connetti.',
+        'help_title': 'Come Usare',
+        'help_text': """COME USARE IASMC SIGNAL COPIER
+
+PASSO 1 — Scegli il tuo terminale MT5
+   Clicca "Sfoglia" e seleziona il file terminal64.exe
+   dell'installazione MetaTrader 5 che vuoi usare.
+   Lascia vuoto per rilevamento automatico.
+
+PASSO 2 — Apri MetaTrader 5 e fai login
+   Apri il terminale MT5 selezionato.
+   Fai login nel tuo conto (demo o reale).
+   Assicurati che AutoTrading sia ATTIVATO (pulsante in alto).
+
+PASSO 3 — Connetti
+   Clicca "Connetti" in questa app.
+   Le info del conto appariranno (numero conto,
+   server, saldo).
+
+PASSO 4 — Configura impostazioni
+   Spunta "Usa il rischio suggerito dal segnale" per
+   seguire la gestione del rischio del provider.
+   Oppure deseleziona per impostare il tuo rischio %,
+   max posizioni e max per simbolo.
+
+PASSO 5 — Avvia
+   Clicca AVVIA. Il copier ascoltera' i segnali di
+   trading e li eseguira' automaticamente sul tuo
+   conto MT5.
+
+SEGNALI GESTITI:
+   - Apertura trade (entry con SL/TP)
+   - Chiusura trade (solo notifica)
+   - Modifica SL (trailing stop / breakeven)
+   - TP Parziale (chiudi X% della posizione)
+   - Portfolio TP (chiudi parziale su tutte le posizioni)
+""",
+        'got_it': 'Capito!',
+    },
+}
+
 
 def load_config() -> dict:
     if os.path.exists(CONFIG_FILE):
@@ -47,6 +186,8 @@ class SignalCopierGUI:
         self.loop = None
         self.account_info = None
         self.connected = False
+        self.lang = self.config.get('language', 'en')
+        self.t = LANG[self.lang]
 
         self._build_ui()
         self._try_connect_mt5()
@@ -63,28 +204,35 @@ class SignalCopierGUI:
         style.configure('TLabelframe.Label', background='#1a1a2e', foreground='#e0e0e0', font=('Segoe UI', 10, 'bold'))
         style.configure('TCheckbutton', background='#1a1a2e', foreground='#e0e0e0')
 
-        # Title + Help button
+        # Title + Help + Language buttons
         title_frame = ttk.Frame(self.root)
         title_frame.pack(fill='x', padx=10, pady=(10, 5))
-        ttk.Label(title_frame, text="IASMC SIGNAL COPIER", style='Title.TLabel').pack(side='left')
-        ttk.Button(title_frame, text="  ? How to use  ", command=self._show_help).pack(side='right')
+        self.title_label = ttk.Label(title_frame, text=self.t['title'], style='Title.TLabel')
+        self.title_label.pack(side='left')
+        self.help_btn_widget = ttk.Button(title_frame, text=self.t['help_btn'], command=self._show_help)
+        self.help_btn_widget.pack(side='right')
+        ttk.Button(title_frame, text="IT", width=3, command=lambda: self._set_language('it')).pack(side='right', padx=2)
+        ttk.Button(title_frame, text="EN", width=3, command=lambda: self._set_language('en')).pack(side='right', padx=2)
 
         # MT5 Status Frame
-        mt5_frame = ttk.LabelFrame(self.root, text="MetaTrader 5", padding=10)
-        mt5_frame.pack(fill='x', padx=10, pady=5)
+        self.mt5_frame = ttk.LabelFrame(self.root, text=self.t['mt5_frame'], padding=10)
+        self.mt5_frame.pack(fill='x', padx=10, pady=5)
 
         # MT5 Path selector
-        path_frame = ttk.Frame(mt5_frame)
+        path_frame = ttk.Frame(self.mt5_frame)
         path_frame.pack(fill='x', pady=(0, 5))
 
-        ttk.Label(path_frame, text="MT5 Path:").pack(side='left')
+        self.path_label = ttk.Label(path_frame, text=self.t['mt5_path'])
+        self.path_label.pack(side='left')
         self.mt5_path_var = tk.StringVar(value=self.config.get('mt5_path', ''))
         self.mt5_path_entry = ttk.Entry(path_frame, textvariable=self.mt5_path_var, width=50)
         self.mt5_path_entry.pack(side='left', padx=5, fill='x', expand=True)
-        ttk.Button(path_frame, text="Browse", command=self._browse_mt5).pack(side='left')
+        self.browse_btn = ttk.Button(path_frame, text=self.t['browse'], command=self._browse_mt5)
+        self.browse_btn.pack(side='left')
 
-        ttk.Label(mt5_frame, text="Leave empty to auto-detect the running terminal",
-                  foreground='#888888', font=('Segoe UI', 8)).pack(anchor='w')
+        self.path_hint = ttk.Label(self.mt5_frame, text=self.t['path_hint'],
+                  foreground='#888888', font=('Segoe UI', 8))
+        self.path_hint.pack(anchor='w')
 
         info_grid = ttk.Frame(mt5_frame)
         info_grid.pack(fill='x', pady=(5, 0))
