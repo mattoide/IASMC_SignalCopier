@@ -32,7 +32,12 @@ class SignalCopierGUI:
     def __init__(self):
         self.root = tk.Tk()
         self.root.title("IASMC Signal Copier")
-        self.root.geometry("650x600")
+        w, h = 650, 600
+        sw = self.root.winfo_screenwidth()
+        sh = self.root.winfo_screenheight()
+        x = (sw - w) // 2
+        y = (sh - h) // 2
+        self.root.geometry(f"{w}x{h}+{x}+{y}")
         self.root.configure(bg='#1a1a2e')
         self.root.resizable(True, True)
 
