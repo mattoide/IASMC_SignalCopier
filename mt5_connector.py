@@ -59,18 +59,62 @@ def disconnect():
 
 
 SYMBOL_ALIASES = {
-    'XAUUSD': ['XAUUSD', 'GOLD', 'GOLD#', 'XAUUSD#', 'XAUUSD.cash'],
-    'XAGUSD': ['XAGUSD', 'SILVER', 'SILVER#', 'XAGUSD#'],
-    'NAS100': ['NAS100', 'US100', 'US100.cash', 'US100Cash#', 'USATECHIDXUSD'],
-    'SP500': ['SP500', 'US500', 'US500.cash', 'US500Cash#', 'USA500IDXUSD'],
-    'US30': ['US30', 'US30.cash', 'US30Cash#', 'USA30IDXUSD'],
-    'WTIUSD': ['WTIUSD', 'USOIL', 'USOIL.cash', 'OILCash#'],
-    'GER40': ['GER40', 'GER40.cash', 'GER40Cash#', 'DEUIDXEUR'],
-    'FRA40': ['FRA40', 'FRA40.cash', 'FRA40Cash#', 'FRAIDXEUR'],
-    'JPN225': ['JPN225', 'JP225', 'JP225.cash', 'JP225Cash#', 'JPNIDXJPY'],
-    'UK100': ['UK100', 'UK100.cash', 'UK100Cash#', 'GBRIDXGBP'],
-    'HK50': ['HK50', 'HK50.cash', 'HK50Cash#', 'HKGIDXHKD'],
-    'AUS200': ['AUS200', 'AUS200.cash', 'AUS200Cash#', 'AUSIDXAUD'],
+    # Metals
+    'XAUUSD': ['XAUUSD', 'GOLD', 'GOLD#', 'XAUUSD#', 'XAUUSD.cash', 'XAUUSDm', 'XAUUSD.a', 'XAUUSD.b', 'XAUUSD.c', 'GOLD.a'],
+    'XAGUSD': ['XAGUSD', 'SILVER', 'SILVER#', 'XAGUSD#', 'XAGUSD.cash', 'XAGUSDm', 'XAGUSD.a'],
+    # Forex majors
+    'EURUSD': ['EURUSD', 'EURUSD#', 'EURUSDm', 'EURUSD.a', 'EURUSD.b', 'EURUSD.c'],
+    'GBPUSD': ['GBPUSD', 'GBPUSD#', 'GBPUSDm', 'GBPUSD.a', 'GBPUSD.b', 'GBPUSD.c'],
+    'USDJPY': ['USDJPY', 'USDJPY#', 'USDJPYm', 'USDJPY.a', 'USDJPY.b', 'USDJPY.c'],
+    'GBPJPY': ['GBPJPY', 'GBPJPY#', 'GBPJPYm', 'GBPJPY.a', 'GBPJPY.b', 'GBPJPY.c'],
+    'AUDUSD': ['AUDUSD', 'AUDUSD#', 'AUDUSDm', 'AUDUSD.a', 'AUDUSD.b'],
+    'NZDUSD': ['NZDUSD', 'NZDUSD#', 'NZDUSDm', 'NZDUSD.a'],
+    'USDCAD': ['USDCAD', 'USDCAD#', 'USDCADm', 'USDCAD.a'],
+    'USDCHF': ['USDCHF', 'USDCHF#', 'USDCHFm', 'USDCHF.a'],
+    # Forex cross
+    'EURJPY': ['EURJPY', 'EURJPY#', 'EURJPYm', 'EURJPY.a'],
+    'EURGBP': ['EURGBP', 'EURGBP#', 'EURGBPm', 'EURGBP.a'],
+    'EURCHF': ['EURCHF', 'EURCHF#', 'EURCHFm', 'EURCHF.a'],
+    'EURAUD': ['EURAUD', 'EURAUD#', 'EURAUDm', 'EURAUD.a'],
+    'EURNZD': ['EURNZD', 'EURNZD#', 'EURNZDm', 'EURNZD.a'],
+    'EURCAD': ['EURCAD', 'EURCAD#', 'EURCADm', 'EURCAD.a'],
+    'AUDCAD': ['AUDCAD', 'AUDCAD#', 'AUDCADm', 'AUDCAD.a'],
+    'AUDNZD': ['AUDNZD', 'AUDNZD#', 'AUDNZDm', 'AUDNZD.a'],
+    'AUDJPY': ['AUDJPY', 'AUDJPY#', 'AUDJPYm', 'AUDJPY.a'],
+    'AUDCHF': ['AUDCHF', 'AUDCHF#', 'AUDCHFm', 'AUDCHF.a'],
+    'NZDJPY': ['NZDJPY', 'NZDJPY#', 'NZDJPYm', 'NZDJPY.a'],
+    'NZDCHF': ['NZDCHF', 'NZDCHF#', 'NZDCHFm', 'NZDCHF.a'],
+    'NZDCAD': ['NZDCAD', 'NZDCAD#', 'NZDCADm', 'NZDCAD.a'],
+    'GBPAUD': ['GBPAUD', 'GBPAUD#', 'GBPAUDm', 'GBPAUD.a'],
+    'GBPCAD': ['GBPCAD', 'GBPCAD#', 'GBPCADm', 'GBPCAD.a'],
+    'GBPCHF': ['GBPCHF', 'GBPCHF#', 'GBPCHFm', 'GBPCHF.a'],
+    'GBPNZD': ['GBPNZD', 'GBPNZD#', 'GBPNZDm', 'GBPNZD.a'],
+    'CADCHF': ['CADCHF', 'CADCHF#', 'CADCHFm', 'CADCHF.a'],
+    'CADJPY': ['CADJPY', 'CADJPY#', 'CADJPYm', 'CADJPY.a'],
+    'CHFJPY': ['CHFJPY', 'CHFJPY#', 'CHFJPYm', 'CHFJPY.a'],
+    # US Indices
+    'NAS100': ['NAS100', 'US100', 'US100.cash', 'US100Cash#', 'USTEC', 'USTEC.cash', 'NAS100.cash', 'NAS100#', 'NDX100', 'USATECHIDXUSD', 'US100m'],
+    'SP500': ['SP500', 'US500', 'US500.cash', 'US500Cash#', 'SPX500', 'SPX500.cash', 'SP500.cash', 'SP500#', 'USA500IDXUSD', 'US500m'],
+    'US30': ['US30', 'US30.cash', 'US30Cash#', 'DJ30', 'DJ30.cash', 'US30#', 'USA30IDXUSD', 'US30m'],
+    # EU Indices
+    'GER40': ['GER40', 'GER40.cash', 'GER40Cash#', 'DAX40', 'DE40', 'DE40.cash', 'GER40#', 'DEUIDXEUR', 'GER40m'],
+    'FRA40': ['FRA40', 'FRA40.cash', 'FRA40Cash#', 'FR40', 'FR40.cash', 'FRA40#', 'FRAIDXEUR', 'FRA40m'],
+    'UK100': ['UK100', 'UK100.cash', 'UK100Cash#', 'FTSE100', 'UK100#', 'GBRIDXGBP', 'UK100m'],
+    'EU50': ['EU50', 'EU50.cash', 'EU50Cash#', 'EUSTX50', 'STOXX50', 'EU50#', 'EUSIDXEUR'],
+    'SWI20': ['SWI20', 'SWI20.cash', 'SWI20Cash#', 'SWI20#', 'CHEIDXCHF'],
+    'ESP35': ['ESP35', 'ESP35.cash', 'ESP35Cash#', 'ESP35#', 'ESPIDXEUR'],
+    'IT40': ['IT40', 'IT40.cash', 'IT40Cash#', 'IT40#', 'ITAIDXEUR'],
+    # Asia Indices
+    'JPN225': ['JPN225', 'JP225', 'JP225.cash', 'JP225Cash#', 'NI225', 'NIKKEI225', 'JPN225.cash', 'JPN225#', 'JPNIDXJPY', 'JP225m'],
+    'HK50': ['HK50', 'HK50.cash', 'HK50Cash#', 'HSI50', 'HK50#', 'HKGIDXHKD', 'HK50m'],
+    'AUS200': ['AUS200', 'AUS200.cash', 'AUS200Cash#', 'ASX200', 'AUS200#', 'AUSIDXAUD', 'AUS200m'],
+    # Energy
+    'WTIUSD': ['WTIUSD', 'USOIL', 'USOIL.cash', 'OILCash#', 'WTIUSD#', 'WTI', 'CL', 'CRUDEOIL', 'USOILm', 'USOIL#'],
+    'BRENTUSD': ['BRENTUSD', 'UKOIL', 'UKOIL.cash', 'BRENT', 'BRN', 'UKOILm', 'UKOIL#'],
+    'NATGAS': ['NATGAS', 'NATGAS#', 'NGAS', 'XNGUSD', 'NATGASm', 'NATGAS.cash'],
+    # Crypto
+    'BTCUSD': ['BTCUSD', 'BTCUSD#', 'BTC/USD', 'BTCUSDm', 'BITCOIN'],
+    'ETHUSD': ['ETHUSD', 'ETHUSD#', 'ETH/USD', 'ETHUSDm', 'ETHEREUM'],
 }
 
 
