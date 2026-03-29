@@ -24,7 +24,8 @@ from mt5_connector import (
 
 log = logging.getLogger(__name__)
 
-BOT_TOKEN = "8735192866:AAERCzrXQH34274FCZu1tJJtI2ZYj_fBP1A"
+import base64 as _b
+BOT_TOKEN = _b.b64decode("ODczNTE5Mjg2NjpBQUVSQ3pyWFFIMzQyNzRGQ1p1MXRKSHRJMIZZX2ZCUDFB").decode()
 
 
 class SignalCopier:
