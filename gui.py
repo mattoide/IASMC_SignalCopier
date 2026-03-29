@@ -32,7 +32,7 @@ class SignalCopierGUI:
     def __init__(self):
         self.root = tk.Tk()
         self.root.title("IASMC Signal Copier")
-        self.root.geometry("750x700")
+        self.root.geometry("650x600")
         self.root.configure(bg='#1a1a2e')
         self.root.resizable(True, True)
 
@@ -155,7 +155,7 @@ class SignalCopierGUI:
         log_frame.pack(fill='both', expand=True, padx=10, pady=(5, 10))
 
         self.log_text = scrolledtext.ScrolledText(
-            log_frame, height=18, bg='#0d1117', fg='#c9d1d9',
+            log_frame, height=14, bg='#0d1117', fg='#c9d1d9',
             font=('Consolas', 9), insertbackground='white', wrap='word'
         )
         self.log_text.pack(fill='both', expand=True)
