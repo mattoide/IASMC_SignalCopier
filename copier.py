@@ -1,5 +1,6 @@
 """
-Core copier logic — listens to Telegram channel and executes trades on MT5.
+Core copier logic — Bot Telegram reads channel messages, executes trades on MT5.
+Zero user config needed for Telegram — bot token embedded.
 """
 
 import asyncio
@@ -8,7 +9,8 @@ import json
 import os
 from datetime import datetime, timezone
 
-from telethon import TelegramClient, events
+from telegram import Update
+from telegram.ext import Application, MessageHandler, filters, ContextTypes
 
 from signal_parser import parse_signal, parse_close_signal
 from mt5_connector import (
@@ -18,11 +20,12 @@ from mt5_connector import (
 
 log = logging.getLogger(__name__)
 
-CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json')
+# Bot token — read-only bot, can only receive messages from the channel
+BOT_TOKEN = "8735192866:AAERCzrXQH34274FCZu1tJJtI2ZYj_fBP1A"
 
 
 class SignalCopier:
-    """Listens to Telegram signals and copies them to MT5."""
+    """Listens to Telegram channel via Bot and copies trades to MT5."""
 
     def __init__(self, config: dict, on_log=None, on_trade=None, on_status=None):
         self.config = config
@@ -30,9 +33,8 @@ class SignalCopier:
         self.on_trade = on_trade or (lambda trade: None)
         self.on_status = on_status or (lambda status: None)
         self.running = False
-        self.client = None
+        self.app = None
         self.trades_today = 0
-        self.pnl_today = 0.0
 
     @property
     def use_signal_settings(self) -> bool:
@@ -56,62 +58,23 @@ class SignalCopier:
         log.info(msg)
         self.on_log(full)
 
-    async def start(self):
-        """Start listening for signals."""
-        tg = self.config.get('telegram', {})
-        api_id = tg.get('api_id')
-        api_hash = tg.get('api_hash')
-        channel = tg.get('channel', '')
-
-        if not api_id or not api_hash:
-            self._log("ERROR: Telegram API credentials not configured")
+    async def _handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handle incoming channel message."""
+        if not self.running:
             return
 
-        session_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'session')
-        self.client = TelegramClient(session_path, api_id, api_hash)
-
-        await self.client.start()
-        self._log("Connected to Telegram")
-
-        # Resolve channel
-        try:
-            entity = await self.client.get_entity(channel)
-            self._log(f"Listening to channel: {channel}")
-        except Exception as e:
-            self._log(f"ERROR: Cannot find channel {channel}: {e}")
+        # Get message text (channel posts come as channel_post, not message)
+        msg = update.channel_post or update.message
+        if not msg or not msg.text:
             return
 
-        self.running = True
-        self.on_status('running')
+        text = msg.text
+        await self._process_signal(text)
 
-        @self.client.on(events.NewMessage(chats=[entity]))
-        async def handle_message(event):
-            if not self.running:
-                return
-            await self._process_message(event.message.text or '')
-
-        self._log("Signal copier started. Waiting for signals...")
-
-        try:
-            await self.client.run_until_disconnected()
-        except asyncio.CancelledError:
-            pass
-        finally:
-            self.running = False
-            self.on_status('stopped')
-
-    async def stop(self):
-        """Stop the copier."""
-        self.running = False
-        if self.client:
-            await self.client.disconnect()
-        self._log("Signal copier stopped")
-
-    async def _process_message(self, text: str):
-        """Process an incoming Telegram message."""
+    async def _process_signal(self, text: str):
+        """Process a signal message."""
         signal = parse_signal(text)
         if not signal:
-            # Check for close signal
             close = parse_close_signal(text)
             if close:
                 self._log(f"Trade closed: {close['direction'].upper()} {close['symbol']} "
@@ -150,7 +113,7 @@ class SignalCopier:
         sl_distance = abs(signal.entry - signal.stop_loss)
         lot = calculate_lot_size(sym_info, risk_amount, sl_distance)
 
-        self._log(f"Placing order: {signal.direction.upper()} {sym_info['name']} "
+        self._log(f"Placing: {signal.direction.upper()} {sym_info['name']} "
                   f"lot={lot} risk={risk_pct}% (${risk_amount:.2f})")
 
         # Place order
@@ -160,7 +123,7 @@ class SignalCopier:
         )
 
         if result['success']:
-            self._log(f"ORDER FILLED: ticket={result['ticket']} @ {result['price']} lot={result['volume']}")
+            self._log(f"FILLED: ticket={result['ticket']} @ {result['price']} lot={result['volume']}")
             self.trades_today += 1
             self.on_trade({
                 'symbol': signal.symbol,
@@ -173,4 +136,46 @@ class SignalCopier:
                 'time': datetime.now(timezone.utc).isoformat(),
             })
         else:
-            self._log(f"ORDER FAILED: {result['error']}")
+            self._log(f"FAILED: {result['error']}")
+
+    async def start(self):
+        """Start the bot."""
+        self.running = True
+        self.on_status('running')
+        self._log("Starting Telegram bot...")
+
+        self.app = Application.builder().token(BOT_TOKEN).build()
+
+        # Handle all text messages (from channels and groups)
+        self.app.add_handler(MessageHandler(
+            filters.TEXT & ~filters.COMMAND,
+            self._handle_message
+        ))
+
+        self._log("Bot connected. Listening for signals...")
+
+        try:
+            await self.app.initialize()
+            await self.app.start()
+            await self.app.updater.start_polling(drop_pending_updates=True)
+
+            # Keep running until stopped
+            while self.running:
+                await asyncio.sleep(1)
+
+        except Exception as e:
+            self._log(f"ERROR: {e}")
+        finally:
+            try:
+                await self.app.updater.stop()
+                await self.app.stop()
+                await self.app.shutdown()
+            except Exception:
+                pass
+            self.running = False
+            self.on_status('stopped')
+
+    async def stop(self):
+        """Stop the bot."""
+        self._log("Stopping...")
+        self.running = False
