@@ -183,6 +183,19 @@ def calculate_lot_size(symbol_info: dict, risk_amount: float, sl_distance: float
     return round(lot, 2)
 
 
+def _get_filling_mode(symbol_name: str):
+    """Detect the filling mode supported by the broker for this symbol."""
+    info = mt5.symbol_info(symbol_name)
+    if info is None:
+        return mt5.ORDER_FILLING_IOC
+    fm = info.filling_mode
+    if fm & 1:
+        return mt5.ORDER_FILLING_FOK
+    if fm & 2:
+        return mt5.ORDER_FILLING_IOC
+    return mt5.ORDER_FILLING_RETURN
+
+
 def place_order(symbol_name: str, direction: str, lot: float,
                 sl: float, tp: float, magic: int = 12121,
                 comment: str = 'SignalCopier') -> dict:
@@ -210,7 +223,7 @@ def place_order(symbol_name: str, direction: str, lot: float,
         'magic': magic,
         'comment': comment,
         'type_time': mt5.ORDER_TIME_GTC,
-        'type_filling': mt5.ORDER_FILLING_IOC,
+        'type_filling': _get_filling_mode(symbol_name),
     }
 
     result = mt5.order_send(request)
@@ -313,7 +326,7 @@ def close_partial(ticket: int, volume_to_close: float) -> dict:
         'magic': pos.magic,
         'comment': 'SignalCopier partial',
         'type_time': mt5.ORDER_TIME_GTC,
-        'type_filling': mt5.ORDER_FILLING_IOC,
+        'type_filling': _get_filling_mode(pos.symbol),
     }
     result = mt5.order_send(request)
     if result and result.retcode == mt5.TRADE_RETCODE_DONE:
