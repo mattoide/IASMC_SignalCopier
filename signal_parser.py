@@ -70,8 +70,31 @@ class SignalPortfolioTP:
     raw_text: str = ''
 
 
+def detect_source(text: str) -> str:
+    """Detect which bot sent the signal from [BotName] tag.
+
+    TelegramSender prefixes all messages with <b>[BotName]</b> or [BotName].
+    Returns bot name (e.g. 'IASMC', 'HybridSMC') or 'unknown'.
+    """
+    # HTML bold tag: <b>[BotName]</b> or plain [BotName]
+    m = re.search(r'\[(\w+?)(?:_Signals?)?\]', text)
+    if m:
+        name = m.group(1)
+        name_lower = name.lower()
+        if 'iasmc' in name_lower:
+            return 'IASMC'
+        if 'hybrid' in name_lower:
+            return 'HybridSMC'
+        return name
+    return 'unknown'
+
+
 def parse_message(text: str):
-    """Parse any IASMC signal message. Returns typed dataclass or None."""
+    """Parse any signal provider message from Telegram.
+
+    Supports both IASMC and HybridSMC formats (same structure).
+    Returns typed dataclass or None.
+    """
     if not text:
         return None
     if 'SIGNAL:' in text and 'Entry:' in text:

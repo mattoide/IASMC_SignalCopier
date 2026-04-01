@@ -184,7 +184,8 @@ def calculate_lot_size(symbol_info: dict, risk_amount: float, sl_distance: float
 
 
 def place_order(symbol_name: str, direction: str, lot: float,
-                sl: float, tp: float) -> dict:
+                sl: float, tp: float, magic: int = 12121,
+                comment: str = 'SignalCopier') -> dict:
     """Place a market order on MT5."""
     tick = mt5.symbol_info_tick(symbol_name)
     if not tick:
@@ -206,8 +207,8 @@ def place_order(symbol_name: str, direction: str, lot: float,
         'sl': sl,
         'tp': tp,
         'deviation': 20,
-        'magic': 12121,
-        'comment': 'SignalCopier',
+        'magic': magic,
+        'comment': comment,
         'type_time': mt5.ORDER_TIME_GTC,
         'type_filling': mt5.ORDER_FILLING_IOC,
     }

@@ -5,6 +5,10 @@
     "max_positions": 5,
     "max_per_symbol": 1
   },
+  "enabled_bots": [
+    "IASMC",
+    "HybridSMC"
+  ],
   "mt5_path": "",
   "language": "en"
 }
