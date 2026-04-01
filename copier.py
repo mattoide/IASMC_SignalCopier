@@ -26,7 +26,7 @@ from mt5_connector import (
 log = logging.getLogger(__name__)
 
 import base64 as _b
-BOT_TOKEN = _b.b64decode("ODczNTE5Mjg2NjpBQUVSQ3pyWFFIMzQyNzRGQ1p1MXRKSHRJMIZZX2ZCUDFB").decode()
+BOT_TOKEN = _b.b64decode("ODczNTE5Mjg2NjpBQUVSQ3pyWFFIMzQyNzRGQ1p1MXRKSnRJMlpZal9mQlAxQQ==").decode()
 
 # Magic numbers per source bot (different from live bots to avoid conflicts)
 BOT_MAGIC = {
