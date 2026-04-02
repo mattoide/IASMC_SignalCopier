@@ -159,10 +159,11 @@ class SignalCopierGUI:
     def __init__(self):
         self.root = tk.Tk()
         self.root.title("Signal Copier")
-        w, h = 650, 680
+        w, h = 650, 720
         x = (self.root.winfo_screenwidth() - w) // 2
         y = (self.root.winfo_screenheight() - h) // 2
         self.root.geometry(f"{w}x{h}+{x}+{y}")
+        self.root.minsize(500, 400)
         self.root.configure(bg='#1a1a2e')
         self.root.resizable(True, True)
 
@@ -197,6 +198,11 @@ class SignalCopierGUI:
         s.configure('TCheckbutton', background='#1a1a2e', foreground='#e0e0e0')
         s.configure('Bot.TCheckbutton', background='#1a1a2e', foreground='#00ccff', font=('Segoe UI', 10, 'bold'))
 
+        # -- Main PanedWindow: top config (scrollable) + bottom log --
+        self.root.rowconfigure(0, weight=0)  # title
+        self.root.rowconfigure(1, weight=1)  # paned
+        self.root.columnconfigure(0, weight=1)
+
         # -- Title + Lang + Help --
         top = ttk.Frame(self.root); top.pack(fill='x', padx=10, pady=(10, 5))
         self.w_title = ttk.Label(top, text=self.t['title'], style='Title.TLabel'); self.w_title.pack(side='left')
@@ -204,8 +210,31 @@ class SignalCopierGUI:
         ttk.Button(top, text="IT", width=3, command=lambda: self._set_lang('it')).pack(side='right', padx=2)
         ttk.Button(top, text="EN", width=3, command=lambda: self._set_lang('en')).pack(side='right', padx=2)
 
+        # -- PanedWindow (config | log) --
+        paned = tk.PanedWindow(self.root, orient='vertical', bg='#1a1a2e', sashwidth=6, sashrelief='flat', sashpad=2)
+        paned.pack(fill='both', expand=True, padx=0, pady=0)
+
+        # == Top pane: scrollable config area ==
+        config_container = tk.Frame(paned, bg='#1a1a2e')
+        self._config_canvas = tk.Canvas(config_container, bg='#1a1a2e', highlightthickness=0)
+        self._config_scrollbar = ttk.Scrollbar(config_container, orient='vertical', command=self._config_canvas.yview)
+        self._config_inner = ttk.Frame(self._config_canvas)
+
+        self._config_inner.bind('<Configure>', lambda e: self._config_canvas.configure(scrollregion=self._config_canvas.bbox('all')))
+        self._canvas_window = self._config_canvas.create_window((0, 0), window=self._config_inner, anchor='nw')
+        self._config_canvas.configure(yscrollcommand=self._config_scrollbar.set)
+        self._config_canvas.bind('<Configure>', lambda e: self._config_canvas.itemconfig(self._canvas_window, width=e.width))
+
+        self._config_canvas.pack(side='left', fill='both', expand=True)
+        self._config_scrollbar.pack(side='right', fill='y')
+
+        # Mousewheel scrolling
+        def _on_mousewheel(event):
+            self._config_canvas.yview_scroll(int(-1 * (event.delta / 120)), 'units')
+        self._config_canvas.bind_all('<MouseWheel>', _on_mousewheel)
+
         # -- MT5 --
-        self.w_mt5f = ttk.LabelFrame(self.root, text=self.t['mt5_frame'], padding=10); self.w_mt5f.pack(fill='x', padx=10, pady=5)
+        self.w_mt5f = ttk.LabelFrame(self._config_inner, text=self.t['mt5_frame'], padding=10); self.w_mt5f.pack(fill='x', padx=10, pady=5)
         pf = ttk.Frame(self.w_mt5f); pf.pack(fill='x', pady=(0, 5))
         self.w_pathlbl = ttk.Label(pf, text=self.t['mt5_path']); self.w_pathlbl.pack(side='left')
         self.mt5_path_var = tk.StringVar(value=self.config.get('mt5_path', ''))
@@ -228,7 +257,7 @@ class SignalCopierGUI:
         self.w_conn = ttk.Button(self.w_mt5f, text=self.t['connect'], command=self._try_connect_mt5); self.w_conn.pack(anchor='e', pady=(5, 0))
 
         # -- Signal Sources (bot checkboxes) --
-        self.w_srcf = ttk.LabelFrame(self.root, text=self.t['sources_frame'], padding=10); self.w_srcf.pack(fill='x', padx=10, pady=5)
+        self.w_srcf = ttk.LabelFrame(self._config_inner, text=self.t['sources_frame'], padding=10); self.w_srcf.pack(fill='x', padx=10, pady=5)
         self.w_srchint = ttk.Label(self.w_srcf, text=self.t['sources_hint'], foreground='#aaa', font=('Segoe UI', 9))
         self.w_srchint.pack(anchor='w', pady=(0, 5))
         self.bot_checkboxes = {}
@@ -238,15 +267,11 @@ class SignalCopierGUI:
             cb.grid(row=0, column=i, sticky='w', padx=(0, 20))
             self.bot_checkboxes[bot] = cb
 
-        # -- Signal Server URL --
-        self.w_srvf = ttk.LabelFrame(self.root, text=self.t['server_frame'], padding=10); self.w_srvf.pack(fill='x', padx=10, pady=5)
-        sf = ttk.Frame(self.w_srvf); sf.pack(fill='x')
-        ttk.Label(sf, text='URL:').pack(side='left', padx=(0, 5))
+        # -- Server URL (hidden, use default) --
         self.server_url_var = tk.StringVar(value=self.config.get('server', {}).get('url', DEFAULT_SERVER_URL))
-        ttk.Entry(sf, textvariable=self.server_url_var, width=50).pack(side='left', fill='x', expand=True)
 
         # -- Settings --
-        self.w_setf = ttk.LabelFrame(self.root, text=self.t['settings_frame'], padding=10); self.w_setf.pack(fill='x', padx=10, pady=5)
+        self.w_setf = ttk.LabelFrame(self._config_inner, text=self.t['settings_frame'], padding=10); self.w_setf.pack(fill='x', padx=10, pady=5)
         self.use_signal_var = tk.BooleanVar(value=self.config['trading'].get('use_signal_settings', True))
         self.w_usesig = ttk.Checkbutton(self.w_setf, text=self.t['use_signal'], variable=self.use_signal_var, command=self._toggle_custom)
         self.w_usesig.pack(anchor='w')
@@ -263,15 +288,22 @@ class SignalCopierGUI:
         self._toggle_custom()
 
         # -- Buttons --
-        btf = ttk.Frame(self.root); btf.pack(fill='x', padx=10, pady=5)
+        btf = ttk.Frame(self._config_inner); btf.pack(fill='x', padx=10, pady=5)
         self.start_btn = ttk.Button(btf, text=self.t['start'], command=self._start_copier); self.start_btn.pack(side='left', padx=5)
         self.stop_btn = ttk.Button(btf, text=self.t['stop'], command=self._stop_copier, state='disabled'); self.stop_btn.pack(side='left', padx=5)
         self.copier_status = ttk.Label(btf, text=self.t['stopped'], style='Status.TLabel'); self.copier_status.pack(side='right', padx=5)
 
-        # -- Log --
-        self.w_logf = ttk.LabelFrame(self.root, text=self.t['log_frame'], padding=5); self.w_logf.pack(fill='both', expand=True, padx=10, pady=(5, 10))
-        self.log_text = scrolledtext.ScrolledText(self.w_logf, height=12, bg='#0d1117', fg='#c9d1d9', font=('Consolas', 9), insertbackground='white', wrap='word')
+        paned.add(config_container, minsize=200)
+
+        # == Bottom pane: Log ==
+        log_container = tk.Frame(paned, bg='#1a1a2e')
+        self.w_logf = ttk.LabelFrame(log_container, text=self.t['log_frame'], padding=5); self.w_logf.pack(fill='both', expand=True, padx=10, pady=(5, 10))
+        self.log_text = scrolledtext.ScrolledText(self.w_logf, height=18, bg='#0d1117', fg='#c9d1d9', font=('Consolas', 9), insertbackground='white', wrap='word')
         self.log_text.pack(fill='both', expand=True)
+
+        paned.add(log_container, minsize=150)
+        # Give log ~60% of space
+        self.root.after(50, lambda: paned.sash_place(0, 0, 340))
 
     # -- Language switch --
     def _set_lang(self, lang):
@@ -293,7 +325,6 @@ class SignalCopierGUI:
         self.w_poslbl.configure(text=self.t['positions'])
         self.w_srcf.configure(text=self.t['sources_frame'])
         self.w_srchint.configure(text=self.t['sources_hint'])
-        self.w_srvf.configure(text=self.t['server_frame'])
         self.w_setf.configure(text=self.t['settings_frame'])
         self.w_usesig.configure(text=self.t['use_signal'])
         self.w_risklbl.configure(text=self.t['risk_pct'])
@@ -386,11 +417,7 @@ class SignalCopierGUI:
             messagebox.showerror("Error", self.t['no_bots_err'])
             return
 
-        self.config['server'] = {'url': self.server_url_var.get().strip()}
-        if not self.config['server']['url']:
-            messagebox.showerror("Error", self.t['no_url_err'])
-            return
-
+        self.config['server'] = {'url': self.server_url_var.get().strip() or DEFAULT_SERVER_URL}
         self.config['mt5_path'] = self.mt5_path_var.get().strip()
         self.config['enabled_bots'] = enabled
         save_config(self.config)
