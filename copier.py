@@ -337,8 +337,7 @@ class SignalCopier:
         bots_str = ', '.join(self.enabled_bots) if self.enabled_bots else 'ALL'
         self._cleanup_closed_positions()
 
-        server_url = self.config.get('server', {}).get('url', '')
-        self._log(f"Connecting to signal server... (sources: {bots_str}, url: {server_url})")
+        self._log(f"Connecting to signal server... (sources: {bots_str})")
         try:
             await self._poll_server()
         except Exception as e:
