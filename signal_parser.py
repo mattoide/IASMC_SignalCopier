@@ -10,8 +10,11 @@ Signal types:
 """
 
 import re
+import logging
 from dataclasses import dataclass, field
 from typing import Optional, List
+
+log = logging.getLogger(__name__)
 
 
 @dataclass
@@ -120,12 +123,17 @@ def _parse_open(text):
         rr = re.search(r'Risk/Reward:\s*1:([\d.]+)', text)
         risk = re.search(r'Suggested Risk:\s*([\d.]+)%', text)
         if not all([entry, sl, tp]): return None
+        if risk:
+            suggested_risk = float(risk.group(1))
+        else:
+            suggested_risk = 1.0
+            log.warning(f"No 'Suggested Risk' found in signal, defaulting to {suggested_risk}%")
         return SignalOpen(
             symbol=sig.group(2).strip(), direction=sig.group(1).lower(),
             entry=float(entry.group(1)), stop_loss=float(sl.group(1)),
             take_profit=float(tp.group(1)),
             risk_reward=float(rr.group(1)) if rr else 0.0,
-            suggested_risk=float(risk.group(1)) if risk else 1.0,
+            suggested_risk=suggested_risk,
             raw_text=text,
         )
     except (ValueError, AttributeError):
