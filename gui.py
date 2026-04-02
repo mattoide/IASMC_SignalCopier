@@ -159,7 +159,7 @@ class SignalCopierGUI:
     def __init__(self):
         self.root = tk.Tk()
         self.root.title("Signal Copier")
-        w, h = 650, 720
+        w, h = 620, 520
         x = (self.root.winfo_screenwidth() - w) // 2
         y = (self.root.winfo_screenheight() - h) // 2
         self.root.geometry(f"{w}x{h}+{x}+{y}")
@@ -190,120 +190,84 @@ class SignalCopierGUI:
         s = ttk.Style()
         s.theme_use('clam')
         s.configure('TFrame', background='#1a1a2e')
-        s.configure('TLabel', background='#1a1a2e', foreground='#e0e0e0', font=('Segoe UI', 10))
-        s.configure('Title.TLabel', background='#1a1a2e', foreground='#00ff88', font=('Segoe UI', 16, 'bold'))
-        s.configure('Status.TLabel', background='#1a1a2e', foreground='#ffaa00', font=('Segoe UI', 10, 'bold'))
+        s.configure('TLabel', background='#1a1a2e', foreground='#e0e0e0', font=('Segoe UI', 9))
+        s.configure('Title.TLabel', background='#1a1a2e', foreground='#00ff88', font=('Segoe UI', 14, 'bold'))
+        s.configure('Status.TLabel', background='#1a1a2e', foreground='#ffaa00', font=('Segoe UI', 9, 'bold'))
         s.configure('TLabelframe', background='#1a1a2e', foreground='#e0e0e0')
-        s.configure('TLabelframe.Label', background='#1a1a2e', foreground='#e0e0e0', font=('Segoe UI', 10, 'bold'))
+        s.configure('TLabelframe.Label', background='#1a1a2e', foreground='#e0e0e0', font=('Segoe UI', 9, 'bold'))
         s.configure('TCheckbutton', background='#1a1a2e', foreground='#e0e0e0')
-        s.configure('Bot.TCheckbutton', background='#1a1a2e', foreground='#00ccff', font=('Segoe UI', 10, 'bold'))
-
-        # -- Main PanedWindow: top config (scrollable) + bottom log --
-        self.root.rowconfigure(0, weight=0)  # title
-        self.root.rowconfigure(1, weight=1)  # paned
-        self.root.columnconfigure(0, weight=1)
+        s.configure('Bot.TCheckbutton', background='#1a1a2e', foreground='#00ccff', font=('Segoe UI', 9, 'bold'))
 
         # -- Title + Lang + Help --
-        top = ttk.Frame(self.root); top.pack(fill='x', padx=10, pady=(10, 5))
+        top = ttk.Frame(self.root); top.pack(fill='x', padx=10, pady=(8, 4))
         self.w_title = ttk.Label(top, text=self.t['title'], style='Title.TLabel'); self.w_title.pack(side='left')
         self.w_help = ttk.Button(top, text=self.t['help_btn'], command=self._show_help); self.w_help.pack(side='right')
         ttk.Button(top, text="IT", width=3, command=lambda: self._set_lang('it')).pack(side='right', padx=2)
         ttk.Button(top, text="EN", width=3, command=lambda: self._set_lang('en')).pack(side='right', padx=2)
 
-        # -- PanedWindow (config | log) --
-        paned = tk.PanedWindow(self.root, orient='vertical', bg='#1a1a2e', sashwidth=6, sashrelief='flat', sashpad=2)
-        paned.pack(fill='both', expand=True, padx=0, pady=0)
-
-        # == Top pane: scrollable config area ==
-        config_container = tk.Frame(paned, bg='#1a1a2e')
-        self._config_canvas = tk.Canvas(config_container, bg='#1a1a2e', highlightthickness=0)
-        self._config_scrollbar = ttk.Scrollbar(config_container, orient='vertical', command=self._config_canvas.yview)
-        self._config_inner = ttk.Frame(self._config_canvas)
-
-        self._config_inner.bind('<Configure>', lambda e: self._config_canvas.configure(scrollregion=self._config_canvas.bbox('all')))
-        self._canvas_window = self._config_canvas.create_window((0, 0), window=self._config_inner, anchor='nw')
-        self._config_canvas.configure(yscrollcommand=self._config_scrollbar.set)
-        self._config_canvas.bind('<Configure>', lambda e: self._config_canvas.itemconfig(self._canvas_window, width=e.width))
-
-        self._config_canvas.pack(side='left', fill='both', expand=True)
-        self._config_scrollbar.pack(side='right', fill='y')
-
-        # Mousewheel scrolling
-        def _on_mousewheel(event):
-            self._config_canvas.yview_scroll(int(-1 * (event.delta / 120)), 'units')
-        self._config_canvas.bind_all('<MouseWheel>', _on_mousewheel)
-
         # -- MT5 --
-        self.w_mt5f = ttk.LabelFrame(self._config_inner, text=self.t['mt5_frame'], padding=10); self.w_mt5f.pack(fill='x', padx=10, pady=5)
-        pf = ttk.Frame(self.w_mt5f); pf.pack(fill='x', pady=(0, 5))
+        self.w_mt5f = ttk.LabelFrame(self.root, text=self.t['mt5_frame'], padding=6); self.w_mt5f.pack(fill='x', padx=10, pady=3)
+        pf = ttk.Frame(self.w_mt5f); pf.pack(fill='x', pady=(0, 3))
         self.w_pathlbl = ttk.Label(pf, text=self.t['mt5_path']); self.w_pathlbl.pack(side='left')
         self.mt5_path_var = tk.StringVar(value=self.config.get('mt5_path', ''))
         ttk.Entry(pf, textvariable=self.mt5_path_var, width=45).pack(side='left', padx=5, fill='x', expand=True)
         self.w_browse = ttk.Button(pf, text=self.t['browse'], command=self._browse_mt5); self.w_browse.pack(side='left')
         self.w_hint = ttk.Label(self.w_mt5f, text=self.t['path_hint'], foreground='#888', font=('Segoe UI', 8)); self.w_hint.pack(anchor='w')
 
-        ig = ttk.Frame(self.w_mt5f); ig.pack(fill='x', pady=(5, 0))
-        self.mt5_status = ttk.Label(ig, text=self.t['searching'], style='Status.TLabel'); self.mt5_status.grid(row=0, column=0, columnspan=4, sticky='w', pady=(0, 5))
+        ig = ttk.Frame(self.w_mt5f); ig.pack(fill='x', pady=(3, 0))
+        self.mt5_status = ttk.Label(ig, text=self.t['searching'], style='Status.TLabel'); self.mt5_status.grid(row=0, column=0, columnspan=4, sticky='w', pady=(0, 3))
         self.w_acclbl = ttk.Label(ig, text=self.t['account']); self.w_acclbl.grid(row=1, column=0, sticky='w')
-        self.mt5_account = ttk.Label(ig, text="--"); self.mt5_account.grid(row=1, column=1, sticky='w', padx=(5, 20))
+        self.mt5_account = ttk.Label(ig, text="--"); self.mt5_account.grid(row=1, column=1, sticky='w', padx=(5, 15))
         self.w_srvlbl = ttk.Label(ig, text=self.t['server']); self.w_srvlbl.grid(row=1, column=2, sticky='w')
         self.mt5_server = ttk.Label(ig, text="--"); self.mt5_server.grid(row=1, column=3, sticky='w', padx=(5, 0))
         self.w_ballbl = ttk.Label(ig, text=self.t['balance']); self.w_ballbl.grid(row=2, column=0, sticky='w')
-        self.mt5_balance = ttk.Label(ig, text="--"); self.mt5_balance.grid(row=2, column=1, sticky='w', padx=(5, 20))
+        self.mt5_balance = ttk.Label(ig, text="--"); self.mt5_balance.grid(row=2, column=1, sticky='w', padx=(5, 15))
         self.w_eqlbl = ttk.Label(ig, text=self.t['equity']); self.w_eqlbl.grid(row=2, column=2, sticky='w')
         self.mt5_equity = ttk.Label(ig, text="--"); self.mt5_equity.grid(row=2, column=3, sticky='w', padx=(5, 0))
-        self.w_poslbl = ttk.Label(ig, text=self.t['positions']); self.w_poslbl.grid(row=3, column=0, sticky='w')
-        self.mt5_positions = ttk.Label(ig, text="--"); self.mt5_positions.grid(row=3, column=1, sticky='w', padx=(5, 20))
-        self.w_conn = ttk.Button(self.w_mt5f, text=self.t['connect'], command=self._try_connect_mt5); self.w_conn.pack(anchor='e', pady=(5, 0))
+        self.w_poslbl = ttk.Label(ig, text=self.t['positions']); self.w_poslbl.grid(row=2, column=4, sticky='w', padx=(15, 0))
+        self.mt5_positions = ttk.Label(ig, text="--"); self.mt5_positions.grid(row=2, column=5, sticky='w', padx=(5, 0))
+        self.w_conn = ttk.Button(self.w_mt5f, text=self.t['connect'], command=self._try_connect_mt5); self.w_conn.pack(anchor='e', pady=(3, 0))
 
-        # -- Signal Sources (bot checkboxes) --
-        self.w_srcf = ttk.LabelFrame(self._config_inner, text=self.t['sources_frame'], padding=10); self.w_srcf.pack(fill='x', padx=10, pady=5)
-        self.w_srchint = ttk.Label(self.w_srcf, text=self.t['sources_hint'], foreground='#aaa', font=('Segoe UI', 9))
-        self.w_srchint.pack(anchor='w', pady=(0, 5))
+        # -- Signal Sources + Settings (combined row) --
+        mid = ttk.Frame(self.root); mid.pack(fill='x', padx=10, pady=3)
+
+        self.w_srcf = ttk.LabelFrame(mid, text=self.t['sources_frame'], padding=6); self.w_srcf.pack(side='left', fill='both', expand=True, padx=(0, 3))
         self.bot_checkboxes = {}
         bf_bots = ttk.Frame(self.w_srcf); bf_bots.pack(fill='x')
         for i, bot in enumerate(AVAILABLE_BOTS):
             cb = ttk.Checkbutton(bf_bots, text=bot, variable=self.bot_vars[bot], style='Bot.TCheckbutton')
-            cb.grid(row=0, column=i, sticky='w', padx=(0, 20))
+            cb.grid(row=0, column=i, sticky='w', padx=(0, 15))
             self.bot_checkboxes[bot] = cb
+
+        self.w_setf = ttk.LabelFrame(mid, text=self.t['settings_frame'], padding=6); self.w_setf.pack(side='left', fill='both', expand=True, padx=(3, 0))
+        self.use_signal_var = tk.BooleanVar(value=self.config['trading'].get('use_signal_settings', True))
+        self.w_usesig = ttk.Checkbutton(self.w_setf, text=self.t['use_signal'], variable=self.use_signal_var, command=self._toggle_custom)
+        self.w_usesig.pack(anchor='w')
+        cf = ttk.Frame(self.w_setf); cf.pack(fill='x', pady=(3, 0)); self.custom_frame = cf
+        self.w_risklbl = ttk.Label(cf, text=self.t['risk_pct']); self.w_risklbl.grid(row=0, column=0, sticky='w', padx=(0, 3))
+        self.risk_var = tk.DoubleVar(value=self.config['trading'].get('custom_risk_pct', 1.0))
+        ttk.Entry(cf, textvariable=self.risk_var, width=6).grid(row=0, column=1, sticky='w')
+        self.w_mposlbl = ttk.Label(cf, text=self.t['max_pos']); self.w_mposlbl.grid(row=0, column=2, sticky='w', padx=(10, 3))
+        self.maxpos_var = tk.IntVar(value=self.config['trading'].get('max_positions', 5))
+        ttk.Entry(cf, textvariable=self.maxpos_var, width=4).grid(row=0, column=3, sticky='w')
+        self.w_msymlbl = ttk.Label(cf, text=self.t['max_sym']); self.w_msymlbl.grid(row=0, column=4, sticky='w', padx=(10, 3))
+        self.maxsym_var = tk.IntVar(value=self.config['trading'].get('max_per_symbol', 1))
+        ttk.Entry(cf, textvariable=self.maxsym_var, width=4).grid(row=0, column=5, sticky='w')
+        self._toggle_custom()
 
         # -- Server URL (hidden, use default) --
         self.server_url_var = tk.StringVar(value=self.config.get('server', {}).get('url', DEFAULT_SERVER_URL))
 
-        # -- Settings --
-        self.w_setf = ttk.LabelFrame(self._config_inner, text=self.t['settings_frame'], padding=10); self.w_setf.pack(fill='x', padx=10, pady=5)
-        self.use_signal_var = tk.BooleanVar(value=self.config['trading'].get('use_signal_settings', True))
-        self.w_usesig = ttk.Checkbutton(self.w_setf, text=self.t['use_signal'], variable=self.use_signal_var, command=self._toggle_custom)
-        self.w_usesig.pack(anchor='w')
-        cf = ttk.Frame(self.w_setf); cf.pack(fill='x', pady=(5, 0)); self.custom_frame = cf
-        self.w_risklbl = ttk.Label(cf, text=self.t['risk_pct']); self.w_risklbl.grid(row=0, column=0, sticky='w', padx=(0, 5))
-        self.risk_var = tk.DoubleVar(value=self.config['trading'].get('custom_risk_pct', 1.0))
-        ttk.Entry(cf, textvariable=self.risk_var, width=8).grid(row=0, column=1, sticky='w')
-        self.w_mposlbl = ttk.Label(cf, text=self.t['max_pos']); self.w_mposlbl.grid(row=0, column=2, sticky='w', padx=(20, 5))
-        self.maxpos_var = tk.IntVar(value=self.config['trading'].get('max_positions', 5))
-        ttk.Entry(cf, textvariable=self.maxpos_var, width=5).grid(row=0, column=3, sticky='w')
-        self.w_msymlbl = ttk.Label(cf, text=self.t['max_sym']); self.w_msymlbl.grid(row=1, column=0, sticky='w', padx=(0, 5), pady=(3, 0))
-        self.maxsym_var = tk.IntVar(value=self.config['trading'].get('max_per_symbol', 1))
-        ttk.Entry(cf, textvariable=self.maxsym_var, width=5).grid(row=1, column=1, sticky='w', pady=(3, 0))
-        self._toggle_custom()
-
         # -- Buttons --
-        btf = ttk.Frame(self._config_inner); btf.pack(fill='x', padx=10, pady=5)
+        btf = ttk.Frame(self.root); btf.pack(fill='x', padx=10, pady=3)
         self.start_btn = ttk.Button(btf, text=self.t['start'], command=self._start_copier); self.start_btn.pack(side='left', padx=5)
         self.stop_btn = ttk.Button(btf, text=self.t['stop'], command=self._stop_copier, state='disabled'); self.stop_btn.pack(side='left', padx=5)
         self.copier_status = ttk.Label(btf, text=self.t['stopped'], style='Status.TLabel'); self.copier_status.pack(side='right', padx=5)
 
-        paned.add(config_container, minsize=200)
-
-        # == Bottom pane: Log ==
-        log_container = tk.Frame(paned, bg='#1a1a2e')
-        self.w_logf = ttk.LabelFrame(log_container, text=self.t['log_frame'], padding=5); self.w_logf.pack(fill='both', expand=True, padx=10, pady=(5, 10))
-        self.log_text = scrolledtext.ScrolledText(self.w_logf, height=18, bg='#0d1117', fg='#c9d1d9', font=('Consolas', 9), insertbackground='white', wrap='word')
+        # -- Log (takes all remaining space) --
+        self.w_logf = ttk.LabelFrame(self.root, text=self.t['log_frame'], padding=5); self.w_logf.pack(fill='both', expand=True, padx=10, pady=(3, 8))
+        self.log_text = scrolledtext.ScrolledText(self.w_logf, height=10, bg='#0d1117', fg='#c9d1d9', font=('Consolas', 9), insertbackground='white', wrap='word')
         self.log_text.pack(fill='both', expand=True)
-
-        paned.add(log_container, minsize=150)
-        # Give log ~60% of space
-        self.root.after(50, lambda: paned.sash_place(0, 0, 340))
 
     # -- Language switch --
     def _set_lang(self, lang):
@@ -324,7 +288,6 @@ class SignalCopierGUI:
         self.w_eqlbl.configure(text=self.t['equity'])
         self.w_poslbl.configure(text=self.t['positions'])
         self.w_srcf.configure(text=self.t['sources_frame'])
-        self.w_srchint.configure(text=self.t['sources_hint'])
         self.w_setf.configure(text=self.t['settings_frame'])
         self.w_usesig.configure(text=self.t['use_signal'])
         self.w_risklbl.configure(text=self.t['risk_pct'])
