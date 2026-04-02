@@ -1,5 +1,5 @@
 """
-Core copier logic — Bot Telegram reads channel messages, executes trades on MT5.
+Core copier logic — Polls signal server, executes trades on MT5.
 Handles: OPEN, CLOSE (info only), SL MODIFY, PARTIAL TP, PORTFOLIO TP.
 Tracks which bot opened each position for correct update routing.
 """
@@ -11,11 +11,8 @@ import os
 import requests
 from datetime import datetime, timezone
 
-from telegram import Update
-from telegram.ext import Application, MessageHandler, filters, ContextTypes
-
 from signal_parser import (
-    parse_message, detect_source, from_server_payload,
+    from_server_payload,
     SignalOpen, SignalClose, SignalSLModified,
     SignalPartialTP, SignalPortfolioTP,
 )
@@ -26,9 +23,6 @@ from mt5_connector import (
 )
 
 log = logging.getLogger(__name__)
-
-import base64 as _b
-BOT_TOKEN = _b.b64decode("ODczNTE5Mjg2NjpBQUVSQ3pyWFFIMzQyNzRGQ1p1MXRKSnRJMlpZal9mQlAxQQ==").decode()
 
 # Magic numbers per source bot (different from live bots to avoid conflicts)
 BOT_MAGIC = {
@@ -48,7 +42,6 @@ class SignalCopier:
         self.on_trade = on_trade or (lambda trade: None)
         self.on_status = on_status or (lambda status: None)
         self.running = False
-        self.app = None
         self.trades_today = 0
         # ticket -> {'source': 'IASMC', 'symbol': 'XAUUSD', 'direction': 'buy'}
         self._position_map = self._load_state()
@@ -79,7 +72,6 @@ class SignalCopier:
             try:
                 with open(STATE_FILE, 'r') as f:
                     data = json.load(f)
-                # Keys are strings (JSON), convert to int
                 return {int(k): v for k, v in data.items()}
             except Exception:
                 pass
@@ -116,37 +108,6 @@ class SignalCopier:
     def _get_magic(self, source: str) -> int:
         return BOT_MAGIC.get(source, DEFAULT_MAGIC)
 
-    async def _handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        if not self.running:
-            return
-        msg = update.channel_post or update.message
-        if not msg or not msg.text:
-            return
-        await self._process_message(msg.text)
-
-    async def _process_message(self, text: str):
-        # Detect source bot
-        source = detect_source(text)
-
-        # Filter by enabled bots
-        if source != 'unknown' and source not in self.enabled_bots:
-            return
-
-        signal = parse_message(text)
-        if signal is None:
-            return
-
-        if isinstance(signal, SignalOpen):
-            await self._handle_open(signal, source)
-        elif isinstance(signal, SignalClose):
-            self._handle_close(signal, source)
-        elif isinstance(signal, SignalSLModified):
-            self._handle_sl_modified(signal, source)
-        elif isinstance(signal, SignalPartialTP):
-            self._handle_partial_tp(signal, source)
-        elif isinstance(signal, SignalPortfolioTP):
-            self._handle_portfolio_tp(signal, source)
-
     # -- OPEN ---------------------------------------------------------------
     async def _handle_open(self, sig: SignalOpen, source: str):
         src_tag = f"[{source}] " if source != 'unknown' else ""
@@ -154,7 +115,6 @@ class SignalCopier:
                   f"@ {sig.entry} SL={sig.stop_loss} TP={sig.take_profit}")
 
         magic = self._get_magic(source)
-        open_pos = get_open_positions(magic)
         total_pos = sum(len(get_open_positions(m)) for m in BOT_MAGIC.values())
 
         if total_pos >= self.max_positions:
@@ -199,7 +159,6 @@ class SignalCopier:
             self._log(f"{src_tag}FILLED: ticket={ticket} @ {result['price']} lot={result['volume']}")
             self.trades_today += 1
 
-            # Track position source
             self._position_map[ticket] = {
                 'source': source,
                 'symbol': sig.symbol,
@@ -223,7 +182,6 @@ class SignalCopier:
         icon = "+" if sig.result == 'win' else "-" if sig.result == 'loss' else "~"
         self._log(f"{src_tag}CLOSED: {sig.direction.upper()} {sig.symbol} "
                   f"{icon}{sig.r_multiple:.2f}R ({sig.pips:+.1f} pips) -- {sig.exit_reason}")
-        # Cleanup stale entries
         self._cleanup_closed_positions()
 
     # -- SL MODIFIED --------------------------------------------------------
@@ -235,7 +193,6 @@ class SignalCopier:
         magic = self._get_magic(source)
         pos = find_position_by_symbol(sig.symbol, sig.direction, magic)
         if not pos:
-            # Fallback: try all magics if source unknown
             if source == 'unknown':
                 for m in BOT_MAGIC.values():
                     pos = find_position_by_symbol(sig.symbol, sig.direction, m)
@@ -308,7 +265,7 @@ class SignalCopier:
 
     # -- SERVER POLLING -----------------------------------------------------
     async def _poll_server(self):
-        """Poll signal server for new signals (alternative to Telegram)."""
+        """Poll signal server for new signals."""
         server_url = self.config.get('server', {}).get('url', '').rstrip('/')
         poll_interval = self.config.get('server', {}).get('poll_interval', 5)
         sources = ','.join(self.enabled_bots) if self.enabled_bots else ''
@@ -350,7 +307,7 @@ class SignalCopier:
                         if source not in self.enabled_bots:
                             continue
 
-                        self._log(f"[SERVER] New signal #{sig_id}: {sig_data.get('signal_type')} "
+                        self._log(f"New signal #{sig_id}: {sig_data.get('signal_type')} "
                                   f"{sig_data.get('symbol', '')} from {source}")
 
                         if isinstance(signal, SignalOpen):
@@ -378,44 +335,17 @@ class SignalCopier:
         self.running = True
         self.on_status('running')
         bots_str = ', '.join(self.enabled_bots) if self.enabled_bots else 'ALL'
-
-        mode = self.config.get('signal_mode', 'telegram')
         self._cleanup_closed_positions()
 
-        if mode == 'server':
-            server_url = self.config.get('server', {}).get('url', '')
-            self._log(f"Starting server polling mode... (sources: {bots_str}, url: {server_url})")
-            try:
-                await self._poll_server()
-            except Exception as e:
-                self._log(f"ERROR: {e}")
-            finally:
-                self.running = False
-                self.on_status('stopped')
-        else:
-            self._log(f"Starting Telegram bot... (sources: {bots_str})")
-            self.app = Application.builder().token(BOT_TOKEN).build()
-            self.app.add_handler(MessageHandler(
-                filters.TEXT & ~filters.COMMAND, self._handle_message
-            ))
-            self._log("Bot connected. Listening for signals...")
-            try:
-                await self.app.initialize()
-                await self.app.start()
-                await self.app.updater.start_polling(drop_pending_updates=True)
-                while self.running:
-                    await asyncio.sleep(1)
-            except Exception as e:
-                self._log(f"ERROR: {e}")
-            finally:
-                try:
-                    await self.app.updater.stop()
-                    await self.app.stop()
-                    await self.app.shutdown()
-                except Exception:
-                    pass
-                self.running = False
-                self.on_status('stopped')
+        server_url = self.config.get('server', {}).get('url', '')
+        self._log(f"Connecting to signal server... (sources: {bots_str}, url: {server_url})")
+        try:
+            await self._poll_server()
+        except Exception as e:
+            self._log(f"ERROR: {e}")
+        finally:
+            self.running = False
+            self.on_status('stopped')
 
     async def stop(self):
         self._log("Stopping...")

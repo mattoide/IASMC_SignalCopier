@@ -1,6 +1,6 @@
 """
 SignalCopier GUI — tkinter-based interface with EN/IT language support.
-Auto-detects MT5, receives signals via Telegram Bot (zero config).
+Auto-detects MT5, receives signals from signal server via polling.
 Supports selecting which bots to copy signals from (IASMC, HybridSMC).
 """
 
@@ -17,6 +17,8 @@ from copier import SignalCopier
 
 CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json')
 
+DEFAULT_SERVER_URL = 'https://signalserver-6iumv5b0.on-forge.com'
+
 # Available bots that can send signals
 AVAILABLE_BOTS = ['IASMC', 'HybridSMC']
 
@@ -31,6 +33,7 @@ LANG = {
         'not_found': '  Not found — open MT5 and login first',
         'sources_frame': 'Signal Sources',
         'sources_hint': 'Select which bots to copy signals from:',
+        'server_frame': 'Signal Server',
         'settings_frame': 'Trading Settings',
         'use_signal': "Use signal's suggested risk (ignore custom settings below)",
         'risk_pct': 'Risk %:', 'max_pos': 'Max positions:', 'max_sym': 'Max per symbol:',
@@ -41,6 +44,7 @@ LANG = {
         'mt5_please': 'Please open MetaTrader 5 and login, then click Connect.',
         'mt5_err': 'MT5 not connected.\n\nOpen MetaTrader 5, login, then click Connect.',
         'no_bots_err': 'No signal sources selected.\n\nSelect at least one bot to copy from.',
+        'no_url_err': 'Server URL is required.',
         'help_title': 'How to Use', 'got_it': 'Got it!',
         'help_text': """HOW TO USE SIGNAL COPIER
 
@@ -66,7 +70,8 @@ STEP 5 - Configure settings
    set your own risk %, max positions.
 
 STEP 6 - Start
-   Click START. Signals will be copied automatically.
+   Click START. Signals will be copied automatically
+   from the signal server.
 
 SIGNALS: Open, Close, SL Modify, Partial TP, Portfolio TP
 Each bot's positions are managed independently.
@@ -82,6 +87,7 @@ Each bot's positions are managed independently.
         'not_found': '  Non trovato — apri MT5 e fai login',
         'sources_frame': 'Fonti Segnali',
         'sources_hint': 'Seleziona da quali bot copiare i segnali:',
+        'server_frame': 'Server Segnali',
         'settings_frame': 'Impostazioni Trading',
         'use_signal': "Usa il rischio suggerito dal segnale",
         'risk_pct': 'Rischio %:', 'max_pos': 'Max posizioni:', 'max_sym': 'Max per simbolo:',
@@ -92,6 +98,7 @@ Each bot's positions are managed independently.
         'mt5_please': 'Apri MetaTrader 5, fai login e clicca Connetti.',
         'mt5_err': 'MT5 non connesso.\n\nApri MetaTrader 5, fai login e clicca Connetti.',
         'no_bots_err': 'Nessuna fonte segnali selezionata.\n\nSeleziona almeno un bot.',
+        'no_url_err': 'URL del server richiesto.',
         'help_title': 'Come Usare', 'got_it': 'Capito!',
         'help_text': """COME USARE SIGNAL COPIER
 
@@ -117,7 +124,8 @@ PASSO 5 - Configura impostazioni
    imposta rischio %, max posizioni.
 
 PASSO 6 - Avvia
-   Clicca AVVIA. I segnali verranno copiati.
+   Clicca AVVIA. I segnali verranno copiati
+   automaticamente dal server.
 
 SEGNALI: Apertura, Chiusura, Modifica SL, TP Parziale, Portfolio TP
 Le posizioni di ogni bot sono gestite indipendentemente.
@@ -138,6 +146,7 @@ def load_config():
             'max_per_symbol': 1,
         },
         'enabled_bots': ['IASMC', 'HybridSMC'],
+        'server': {'url': DEFAULT_SERVER_URL},
     }
 
 
@@ -150,7 +159,7 @@ class SignalCopierGUI:
     def __init__(self):
         self.root = tk.Tk()
         self.root.title("Signal Copier")
-        w, h = 650, 700
+        w, h = 650, 680
         x = (self.root.winfo_screenwidth() - w) // 2
         y = (self.root.winfo_screenheight() - h) // 2
         self.root.geometry(f"{w}x{h}+{x}+{y}")
@@ -229,20 +238,12 @@ class SignalCopierGUI:
             cb.grid(row=0, column=i, sticky='w', padx=(0, 20))
             self.bot_checkboxes[bot] = cb
 
-        # -- Signal Mode (Telegram / Server) --
-        self.w_modef = ttk.LabelFrame(self.root, text='Signal Mode', padding=10); self.w_modef.pack(fill='x', padx=10, pady=5)
-        self.signal_mode_var = tk.StringVar(value=self.config.get('signal_mode', 'server'))
-        mf = ttk.Frame(self.w_modef); mf.pack(fill='x')
-        ttk.Radiobutton(mf, text='Telegram', variable=self.signal_mode_var, value='telegram',
-                        command=self._toggle_server_fields).grid(row=0, column=0, sticky='w', padx=(0, 15))
-        ttk.Radiobutton(mf, text='Server', variable=self.signal_mode_var, value='server',
-                        command=self._toggle_server_fields).grid(row=0, column=1, sticky='w')
-        self.server_frame = ttk.Frame(self.w_modef)
-        self.server_frame.pack(fill='x', pady=(5, 0))
-        ttk.Label(self.server_frame, text='URL:').grid(row=0, column=0, sticky='w', padx=(0, 5))
-        self.server_url_var = tk.StringVar(value=self.config.get('server', {}).get('url', 'https://signalserver-6iumv5b0.on-forge.com'))
-        ttk.Entry(self.server_frame, textvariable=self.server_url_var, width=40).grid(row=0, column=1, sticky='w')
-        self._toggle_server_fields()
+        # -- Signal Server URL --
+        self.w_srvf = ttk.LabelFrame(self.root, text=self.t['server_frame'], padding=10); self.w_srvf.pack(fill='x', padx=10, pady=5)
+        sf = ttk.Frame(self.w_srvf); sf.pack(fill='x')
+        ttk.Label(sf, text='URL:').pack(side='left', padx=(0, 5))
+        self.server_url_var = tk.StringVar(value=self.config.get('server', {}).get('url', DEFAULT_SERVER_URL))
+        ttk.Entry(sf, textvariable=self.server_url_var, width=50).pack(side='left', fill='x', expand=True)
 
         # -- Settings --
         self.w_setf = ttk.LabelFrame(self.root, text=self.t['settings_frame'], padding=10); self.w_setf.pack(fill='x', padx=10, pady=5)
@@ -292,6 +293,7 @@ class SignalCopierGUI:
         self.w_poslbl.configure(text=self.t['positions'])
         self.w_srcf.configure(text=self.t['sources_frame'])
         self.w_srchint.configure(text=self.t['sources_hint'])
+        self.w_srvf.configure(text=self.t['server_frame'])
         self.w_setf.configure(text=self.t['settings_frame'])
         self.w_usesig.configure(text=self.t['use_signal'])
         self.w_risklbl.configure(text=self.t['risk_pct'])
@@ -316,17 +318,6 @@ class SignalCopierGUI:
         txt.insert('1.0', self.t['help_text'])
         txt.configure(state='disabled')
         ttk.Button(win, text=self.t['got_it'], command=win.destroy).pack(pady=(0, 10))
-
-    def _toggle_server_fields(self):
-        if self.signal_mode_var.get() == 'server':
-            for child in self.server_frame.winfo_children():
-                child.configure(state='normal')
-        else:
-            for child in self.server_frame.winfo_children():
-                try:
-                    child.configure(state='disabled')
-                except tk.TclError:
-                    pass
 
     def _toggle_custom(self):
         state = 'disabled' if self.use_signal_var.get() else 'normal'
@@ -360,7 +351,6 @@ class SignalCopierGUI:
             self._log(self.t['mt5_please'])
 
     def _get_enabled_bots(self) -> list:
-        """Get list of currently enabled bot names from checkboxes."""
         return [bot for bot, var in self.bot_vars.items() if var.get()]
 
     def _update_loop(self):
@@ -372,7 +362,6 @@ class SignalCopierGUI:
                     self.mt5_equity.configure(text=f"{eq:.2f}")
                     self.mt5_positions.configure(text=str(len(pos)))
             except: pass
-        # Sync config live (settings update in real-time)
         self.config['trading'] = {
             'use_signal_settings': self.use_signal_var.get(),
             'custom_risk_pct': self.risk_var.get(),
@@ -380,10 +369,7 @@ class SignalCopierGUI:
             'max_per_symbol': self.maxsym_var.get(),
         }
         self.config['enabled_bots'] = self._get_enabled_bots()
-        self.config['signal_mode'] = self.signal_mode_var.get()
-        self.config['server'] = {
-            'url': self.server_url_var.get().strip(),
-        }
+        self.config['server'] = {'url': self.server_url_var.get().strip()}
         self.root.after(5000, self._update_loop)
 
     def _log(self, msg):
@@ -400,15 +386,10 @@ class SignalCopierGUI:
             messagebox.showerror("Error", self.t['no_bots_err'])
             return
 
-        # Validate server mode
-        self.config['signal_mode'] = self.signal_mode_var.get()
-        self.config['server'] = {
-            'url': self.server_url_var.get().strip(),
-        }
-        if self.config['signal_mode'] == 'server':
-            if not self.config['server']['url']:
-                messagebox.showerror("Error", "Server mode requires a URL.")
-                return
+        self.config['server'] = {'url': self.server_url_var.get().strip()}
+        if not self.config['server']['url']:
+            messagebox.showerror("Error", self.t['no_url_err'])
+            return
 
         self.config['mt5_path'] = self.mt5_path_var.get().strip()
         self.config['enabled_bots'] = enabled
@@ -427,7 +408,6 @@ class SignalCopierGUI:
         )
         self.copier_thread.start()
         self.start_btn.configure(state='disabled'); self.stop_btn.configure(state='normal')
-        # Disable bot checkboxes while running
         for cb in self.bot_checkboxes.values():
             cb.configure(state='disabled')
         self.copier_status.configure(text=self.t['starting'], foreground='#ffaa00')
@@ -436,7 +416,6 @@ class SignalCopierGUI:
         if self.copier and self.loop:
             asyncio.run_coroutine_threadsafe(self.copier.stop(), self.loop)
         self.start_btn.configure(state='normal'); self.stop_btn.configure(state='disabled')
-        # Re-enable bot checkboxes
         for cb in self.bot_checkboxes.values():
             cb.configure(state='normal')
         self.copier_status.configure(text=self.t['stopped'], foreground='#ffaa00')
@@ -466,7 +445,6 @@ class SignalCopierGUI:
 
 if __name__ == '__main__':
     import logging
-    # File-based logging for diagnostics (persists after GUI close)
     _log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logs')
     os.makedirs(_log_dir, exist_ok=True)
     logging.basicConfig(
