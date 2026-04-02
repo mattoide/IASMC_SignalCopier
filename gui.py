@@ -231,7 +231,7 @@ class SignalCopierGUI:
 
         # -- Signal Mode (Telegram / Server) --
         self.w_modef = ttk.LabelFrame(self.root, text='Signal Mode', padding=10); self.w_modef.pack(fill='x', padx=10, pady=5)
-        self.signal_mode_var = tk.StringVar(value=self.config.get('signal_mode', 'telegram'))
+        self.signal_mode_var = tk.StringVar(value=self.config.get('signal_mode', 'server'))
         mf = ttk.Frame(self.w_modef); mf.pack(fill='x')
         ttk.Radiobutton(mf, text='Telegram', variable=self.signal_mode_var, value='telegram',
                         command=self._toggle_server_fields).grid(row=0, column=0, sticky='w', padx=(0, 15))
@@ -240,7 +240,7 @@ class SignalCopierGUI:
         self.server_frame = ttk.Frame(self.w_modef)
         self.server_frame.pack(fill='x', pady=(5, 0))
         ttk.Label(self.server_frame, text='URL:').grid(row=0, column=0, sticky='w', padx=(0, 5))
-        self.server_url_var = tk.StringVar(value=self.config.get('server', {}).get('url', ''))
+        self.server_url_var = tk.StringVar(value=self.config.get('server', {}).get('url', 'https://signalserver-6iumv5b0.on-forge.com'))
         ttk.Entry(self.server_frame, textvariable=self.server_url_var, width=40).grid(row=0, column=1, sticky='w')
         self._toggle_server_fields()
 
