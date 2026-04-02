@@ -8,13 +8,15 @@ import asyncio
 import logging
 import json
 import os
+import requests
 from datetime import datetime, timezone
 
 from telegram import Update
 from telegram.ext import Application, MessageHandler, filters, ContextTypes
 
 from signal_parser import (
-    parse_message, detect_source, SignalOpen, SignalClose, SignalSLModified,
+    parse_message, detect_source, from_server_payload,
+    SignalOpen, SignalClose, SignalSLModified,
     SignalPartialTP, SignalPortfolioTP,
 )
 from mt5_connector import (
@@ -304,38 +306,116 @@ class SignalCopier:
             else:
                 self._log(f"  {pos.symbol}: close failed -- {result['error']}")
 
+    # -- SERVER POLLING -----------------------------------------------------
+    async def _poll_server(self):
+        """Poll signal server for new signals (alternative to Telegram)."""
+        server_url = self.config.get('server', {}).get('url', '').rstrip('/')
+        poll_interval = self.config.get('server', {}).get('poll_interval', 5)
+        sources = ','.join(self.enabled_bots) if self.enabled_bots else ''
+        last_id = 0
+
+        # Get initial last_id (skip existing signals)
+        try:
+            resp = requests.get(
+                f"{server_url}/api/signals/latest",
+                params={'after_id': 0, 'source': sources},
+                timeout=10,
+            )
+            if resp.status_code == 200:
+                signals = resp.json().get('signals', [])
+                if signals:
+                    last_id = max(s['id'] for s in signals)
+                    self._log(f"Server sync: skipping {len(signals)} existing signals (last_id={last_id})")
+        except Exception as e:
+            self._log(f"Server initial sync failed: {e}")
+
+        self._log(f"Polling server every {poll_interval}s...")
+
+        while self.running:
+            try:
+                resp = requests.get(
+                    f"{server_url}/api/signals/latest",
+                    params={'after_id': last_id, 'source': sources},
+                    timeout=10,
+                )
+                if resp.status_code == 200:
+                    signals = resp.json().get('signals', [])
+                    for sig_data in signals:
+                        sig_id = sig_data['id']
+                        if sig_id > last_id:
+                            last_id = sig_id
+                        signal, source = from_server_payload(sig_data)
+                        if signal is None:
+                            continue
+                        if source not in self.enabled_bots:
+                            continue
+
+                        self._log(f"[SERVER] New signal #{sig_id}: {sig_data.get('signal_type')} "
+                                  f"{sig_data.get('symbol', '')} from {source}")
+
+                        if isinstance(signal, SignalOpen):
+                            await self._handle_open(signal, source)
+                        elif isinstance(signal, SignalClose):
+                            self._handle_close(signal, source)
+                        elif isinstance(signal, SignalSLModified):
+                            self._handle_sl_modified(signal, source)
+                        elif isinstance(signal, SignalPartialTP):
+                            self._handle_partial_tp(signal, source)
+                        elif isinstance(signal, SignalPortfolioTP):
+                            self._handle_portfolio_tp(signal, source)
+                elif resp.status_code != 200:
+                    self._log(f"Server returned {resp.status_code}")
+
+            except requests.ConnectionError:
+                self._log("Server unreachable, retrying...")
+            except Exception as e:
+                self._log(f"Server poll error: {e}")
+
+            await asyncio.sleep(poll_interval)
+
     # -- START/STOP ---------------------------------------------------------
     async def start(self):
         self.running = True
         self.on_status('running')
         bots_str = ', '.join(self.enabled_bots) if self.enabled_bots else 'ALL'
-        self._log(f"Starting Telegram bot... (sources: {bots_str})")
 
-        self.app = Application.builder().token(BOT_TOKEN).build()
-        self.app.add_handler(MessageHandler(
-            filters.TEXT & ~filters.COMMAND, self._handle_message
-        ))
-
-        self._log("Bot connected. Listening for signals...")
+        mode = self.config.get('signal_mode', 'telegram')
         self._cleanup_closed_positions()
 
-        try:
-            await self.app.initialize()
-            await self.app.start()
-            await self.app.updater.start_polling(drop_pending_updates=True)
-            while self.running:
-                await asyncio.sleep(1)
-        except Exception as e:
-            self._log(f"ERROR: {e}")
-        finally:
+        if mode == 'server':
+            server_url = self.config.get('server', {}).get('url', '')
+            self._log(f"Starting server polling mode... (sources: {bots_str}, url: {server_url})")
             try:
-                await self.app.updater.stop()
-                await self.app.stop()
-                await self.app.shutdown()
-            except Exception:
-                pass
-            self.running = False
-            self.on_status('stopped')
+                await self._poll_server()
+            except Exception as e:
+                self._log(f"ERROR: {e}")
+            finally:
+                self.running = False
+                self.on_status('stopped')
+        else:
+            self._log(f"Starting Telegram bot... (sources: {bots_str})")
+            self.app = Application.builder().token(BOT_TOKEN).build()
+            self.app.add_handler(MessageHandler(
+                filters.TEXT & ~filters.COMMAND, self._handle_message
+            ))
+            self._log("Bot connected. Listening for signals...")
+            try:
+                await self.app.initialize()
+                await self.app.start()
+                await self.app.updater.start_polling(drop_pending_updates=True)
+                while self.running:
+                    await asyncio.sleep(1)
+            except Exception as e:
+                self._log(f"ERROR: {e}")
+            finally:
+                try:
+                    await self.app.updater.stop()
+                    await self.app.stop()
+                    await self.app.shutdown()
+                except Exception:
+                    pass
+                self.running = False
+                self.on_status('stopped')
 
     async def stop(self):
         self._log("Stopping...")

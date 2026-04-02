@@ -229,6 +229,21 @@ class SignalCopierGUI:
             cb.grid(row=0, column=i, sticky='w', padx=(0, 20))
             self.bot_checkboxes[bot] = cb
 
+        # -- Signal Mode (Telegram / Server) --
+        self.w_modef = ttk.LabelFrame(self.root, text='Signal Mode', padding=10); self.w_modef.pack(fill='x', padx=10, pady=5)
+        self.signal_mode_var = tk.StringVar(value=self.config.get('signal_mode', 'telegram'))
+        mf = ttk.Frame(self.w_modef); mf.pack(fill='x')
+        ttk.Radiobutton(mf, text='Telegram', variable=self.signal_mode_var, value='telegram',
+                        command=self._toggle_server_fields).grid(row=0, column=0, sticky='w', padx=(0, 15))
+        ttk.Radiobutton(mf, text='Server', variable=self.signal_mode_var, value='server',
+                        command=self._toggle_server_fields).grid(row=0, column=1, sticky='w')
+        self.server_frame = ttk.Frame(self.w_modef)
+        self.server_frame.pack(fill='x', pady=(5, 0))
+        ttk.Label(self.server_frame, text='URL:').grid(row=0, column=0, sticky='w', padx=(0, 5))
+        self.server_url_var = tk.StringVar(value=self.config.get('server', {}).get('url', ''))
+        ttk.Entry(self.server_frame, textvariable=self.server_url_var, width=40).grid(row=0, column=1, sticky='w')
+        self._toggle_server_fields()
+
         # -- Settings --
         self.w_setf = ttk.LabelFrame(self.root, text=self.t['settings_frame'], padding=10); self.w_setf.pack(fill='x', padx=10, pady=5)
         self.use_signal_var = tk.BooleanVar(value=self.config['trading'].get('use_signal_settings', True))
@@ -302,6 +317,17 @@ class SignalCopierGUI:
         txt.configure(state='disabled')
         ttk.Button(win, text=self.t['got_it'], command=win.destroy).pack(pady=(0, 10))
 
+    def _toggle_server_fields(self):
+        if self.signal_mode_var.get() == 'server':
+            for child in self.server_frame.winfo_children():
+                child.configure(state='normal')
+        else:
+            for child in self.server_frame.winfo_children():
+                try:
+                    child.configure(state='disabled')
+                except tk.TclError:
+                    pass
+
     def _toggle_custom(self):
         state = 'disabled' if self.use_signal_var.get() else 'normal'
         for child in self.custom_frame.winfo_children():
@@ -354,6 +380,10 @@ class SignalCopierGUI:
             'max_per_symbol': self.maxsym_var.get(),
         }
         self.config['enabled_bots'] = self._get_enabled_bots()
+        self.config['signal_mode'] = self.signal_mode_var.get()
+        self.config['server'] = {
+            'url': self.server_url_var.get().strip(),
+        }
         self.root.after(5000, self._update_loop)
 
     def _log(self, msg):
@@ -369,6 +399,16 @@ class SignalCopierGUI:
         if not enabled:
             messagebox.showerror("Error", self.t['no_bots_err'])
             return
+
+        # Validate server mode
+        self.config['signal_mode'] = self.signal_mode_var.get()
+        self.config['server'] = {
+            'url': self.server_url_var.get().strip(),
+        }
+        if self.config['signal_mode'] == 'server':
+            if not self.config['server']['url']:
+                messagebox.showerror("Error", "Server mode requires a URL.")
+                return
 
         self.config['mt5_path'] = self.mt5_path_var.get().strip()
         self.config['enabled_bots'] = enabled

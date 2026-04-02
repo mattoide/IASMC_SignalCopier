@@ -73,6 +73,73 @@ class SignalPortfolioTP:
     raw_text: str = ''
 
 
+def from_server_payload(data: dict):
+    """Convert a signal server JSON payload into a typed Signal dataclass.
+
+    The server stores signals with: source, signal_type, symbol, direction, payload (dict).
+    """
+    sig_type = data.get('signal_type', '')
+    payload = data.get('payload', {})
+    source = data.get('source', 'unknown')
+
+    if sig_type == 'open':
+        return SignalOpen(
+            symbol=payload.get('symbol', ''),
+            direction=payload.get('direction', ''),
+            entry=float(payload.get('entry', 0)),
+            stop_loss=float(payload.get('stop_loss', 0)),
+            take_profit=float(payload.get('take_profit', 0)),
+            suggested_risk=float(payload.get('suggested_risk', 1.0)),
+        ), source
+    elif sig_type == 'close':
+        result = payload.get('result', '').lower()
+        if result in ('win', 'tp'):
+            result = 'win'
+        elif result in ('loss', 'sl'):
+            result = 'loss'
+        else:
+            result = 'breakeven'
+        return SignalClose(
+            symbol=payload.get('symbol', ''),
+            direction=payload.get('direction', ''),
+            result=result,
+            r_multiple=float(payload.get('r_multiple', 0)),
+            pips=float(payload.get('pips', 0)),
+            exit_reason=payload.get('exit_reason', ''),
+        ), source
+    elif sig_type == 'sl_modified':
+        return SignalSLModified(
+            symbol=payload.get('symbol', ''),
+            direction=payload.get('direction', ''),
+            old_sl=float(payload.get('old_sl', 0)),
+            new_sl=float(payload.get('new_sl', 0)),
+            status=payload.get('status', ''),
+        ), source
+    elif sig_type == 'partial_tp':
+        return SignalPartialTP(
+            symbol=payload.get('symbol', ''),
+            direction=payload.get('direction', ''),
+            closed_pct=float(payload.get('closed_pct', 25)),
+            close_price=float(payload.get('close_price', 0)),
+        ), source
+    elif sig_type == 'portfolio_tp':
+        details = []
+        for d in payload.get('details', []):
+            details.append((
+                d.get('symbol', ''),
+                float(d.get('partial_vol', 0)),
+                float(d.get('total_vol', 0)),
+                float(d.get('pnl_pct', 0)),
+            ))
+        return SignalPortfolioTP(
+            details=details,
+            total_locked_pct=float(payload.get('total_locked_pct', 0)),
+            floating_pct=float(payload.get('floating_pct', 0)),
+        ), source
+
+    return None, source
+
+
 def detect_source(text: str) -> str:
     """Detect which bot sent the signal from [BotName] tag.
 
