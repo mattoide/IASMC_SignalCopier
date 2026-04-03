@@ -147,7 +147,8 @@ class SignalCopier:
         equity = get_account_equity()
         risk_amount = equity * (risk_pct / 100)
         sl_distance = abs(sig.entry - sig.stop_loss)
-        lot = calculate_lot_size(sym_info, risk_amount, sl_distance)
+        lot = calculate_lot_size(sym_info, risk_amount, sl_distance,
+                                 entry_price=sig.entry, direction=sig.direction)
 
         self._log(f"{src_tag}Placing: {sig.direction.upper()} {sym_info['name']} "
                   f"lot={lot} risk={risk_pct}% equity={equity:.2f} risk_amount={risk_amount:.2f}")

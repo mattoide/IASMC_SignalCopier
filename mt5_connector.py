@@ -155,6 +155,7 @@ def get_symbol_info(symbol: str) -> Optional[dict]:
                 'digits': info.digits,
                 'trade_tick_size': info.trade_tick_size,
                 'trade_tick_value': info.trade_tick_value,
+                'trade_contract_size': info.trade_contract_size,
                 'volume_min': info.volume_min,
                 'volume_max': info.volume_max,
                 'volume_step': info.volume_step,
@@ -176,6 +177,7 @@ def get_symbol_info(symbol: str) -> Optional[dict]:
                 'digits': info.digits,
                 'trade_tick_size': info.trade_tick_size,
                 'trade_tick_value': info.trade_tick_value,
+                'trade_contract_size': info.trade_contract_size,
                 'volume_min': info.volume_min,
                 'volume_max': info.volume_max,
                 'volume_step': info.volume_step,
@@ -184,27 +186,73 @@ def get_symbol_info(symbol: str) -> Optional[dict]:
     return None
 
 
-def calculate_lot_size(symbol_info: dict, risk_amount: float, sl_distance: float) -> float:
-    """Calculate lot size based on risk amount and SL distance."""
+def calculate_lot_size(symbol_info: dict, risk_amount: float, sl_distance: float,
+                       entry_price: float = 0, direction: str = 'buy') -> float:
+    """Calculate lot size based on risk amount and SL distance.
+
+    Primary method: mt5.order_calc_profit() — lets MT5 handle contract size,
+    currency conversion, and tick value correctly for ALL symbol types.
+    Fallback: tick-based calculation if order_calc_profit fails.
+    """
+    sym = symbol_info['name']
+
     if sl_distance <= 0:
+        log.warning(f"LOT_CALC {sym}: sl_distance={sl_distance} <= 0, returning volume_min")
         return symbol_info['volume_min']
 
+    # --- Primary method: order_calc_profit ---
+    # Simulate 1 lot losing sl_distance to get loss in account currency
+    if entry_price > 0:
+        if direction == 'buy':
+            price_open = entry_price
+            price_close = entry_price - sl_distance
+        else:
+            price_open = entry_price
+            price_close = entry_price + sl_distance
+
+        action = mt5.ORDER_TYPE_BUY if direction == 'buy' else mt5.ORDER_TYPE_SELL
+        profit_1lot = mt5.order_calc_profit(action, sym, 1.0, price_open, price_close)
+
+        if profit_1lot is not None and profit_1lot < 0:
+            loss_per_lot = abs(profit_1lot)
+            raw_lot = risk_amount / loss_per_lot
+
+            log.info(f"LOT_CALC {sym} [order_calc_profit]: {direction} entry={entry_price} "
+                     f"sl_dist={sl_distance} loss_1lot={loss_per_lot:.4f} "
+                     f"risk={risk_amount:.2f} raw_lot={raw_lot:.4f}")
+
+            step = symbol_info['volume_step']
+            lot = round(raw_lot / step) * step
+            lot = max(lot, symbol_info['volume_min'])
+            lot = min(lot, symbol_info['volume_max'])
+            log.info(f"LOT_CALC {sym}: final_lot={round(lot, 2)}")
+            return round(lot, 2)
+        else:
+            log.warning(f"LOT_CALC {sym}: order_calc_profit returned {profit_1lot}, falling back to tick method")
+
+    # --- Fallback: tick-based calculation ---
     tick_size = symbol_info['trade_tick_size']
     tick_value = symbol_info['trade_tick_value']
 
     if tick_size <= 0 or tick_value <= 0:
+        log.warning(f"LOT_CALC {sym}: tick_size={tick_size} tick_value={tick_value} invalid, returning volume_min")
         return symbol_info['volume_min']
 
     sl_ticks = sl_distance / tick_size
     loss_per_lot = sl_ticks * tick_value
-    lot = risk_amount / loss_per_lot if loss_per_lot > 0 else symbol_info['volume_min']
+    raw_lot = risk_amount / loss_per_lot if loss_per_lot > 0 else symbol_info['volume_min']
 
-    # Round to volume_step
+    log.info(f"LOT_CALC {sym} [tick_fallback]: sl_dist={sl_distance} tick_size={tick_size} "
+             f"tick_value={tick_value} contract_size={symbol_info.get('trade_contract_size', '?')} "
+             f"sl_ticks={sl_ticks:.1f} loss_per_lot={loss_per_lot:.4f} "
+             f"risk={risk_amount:.2f} raw_lot={raw_lot:.4f}")
+
     step = symbol_info['volume_step']
-    lot = round(lot / step) * step
+    lot = round(raw_lot / step) * step
     lot = max(lot, symbol_info['volume_min'])
     lot = min(lot, symbol_info['volume_max'])
 
+    log.info(f"LOT_CALC {sym}: final_lot={round(lot, 2)}")
     return round(lot, 2)
 
 
