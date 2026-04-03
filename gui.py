@@ -13,7 +13,7 @@ import os
 from datetime import datetime
 
 from mt5_connector import auto_connect, disconnect, get_open_positions, get_account_equity
-from copier import SignalCopier
+from copier import SignalCopier, BOT_MAGIC
 
 CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json')
 
@@ -337,7 +337,8 @@ class SignalCopierGUI:
             self.mt5_server.configure(text=self.account_info.server)
             self.mt5_balance.configure(text=f"{self.account_info.balance:.2f} {self.account_info.currency}")
             self.mt5_equity.configure(text=f"{self.account_info.equity:.2f} {self.account_info.currency}")
-            self.mt5_positions.configure(text=str(len(get_open_positions())))
+            copier_pos = sum(len(get_open_positions(m)) for m in BOT_MAGIC.values())
+            self.mt5_positions.configure(text=str(copier_pos))
             self._log(self.t['mt5_log'].format(self.account_info.login, self.account_info.server))
         else:
             self.connected = False
@@ -351,10 +352,10 @@ class SignalCopierGUI:
         if self.connected:
             try:
                 eq = get_account_equity()
-                pos = get_open_positions()
                 if eq > 0:
                     self.mt5_equity.configure(text=f"{eq:.2f}")
-                    self.mt5_positions.configure(text=str(len(pos)))
+                    copier_pos = sum(len(get_open_positions(m)) for m in BOT_MAGIC.values())
+                    self.mt5_positions.configure(text=str(copier_pos))
             except: pass
         self.config['trading'] = {
             'use_signal_settings': self.use_signal_var.get(),
