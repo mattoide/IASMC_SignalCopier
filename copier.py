@@ -85,6 +85,34 @@ class SignalCopier:
         except Exception as e:
             log.warning(f"Failed to save state: {e}")
 
+    def _recover_positions_from_mt5(self):
+        """Recover open positions from MT5 that belong to the copier but aren't tracked.
+
+        On restart, positions_state.json may be lost/empty. This rebuilds _position_map
+        from MT5 open positions matching copier magic numbers, so SL updates and partial
+        closes continue to work.
+        """
+        magic_to_source = {v: k for k, v in BOT_MAGIC.items()}
+        recovered = 0
+        for magic, source in magic_to_source.items():
+            for pos in get_open_positions(magic):
+                if pos.ticket not in self._position_map:
+                    direction = 'buy' if pos.type == 0 else 'sell'
+                    # Extract source from comment if available (e.g. "SC_IASMC")
+                    src = source
+                    if pos.comment and pos.comment.startswith('SC_'):
+                        src = pos.comment[3:]
+                    self._position_map[pos.ticket] = {
+                        'source': src,
+                        'symbol': pos.symbol,
+                        'direction': direction,
+                        'entry': pos.price_open,
+                    }
+                    recovered += 1
+        if recovered:
+            self._save_state()
+            self._log(f"Recovered {recovered} open position(s) from MT5")
+
     def _cleanup_closed_positions(self):
         """Remove entries for positions that no longer exist on MT5."""
         if not self._position_map:
@@ -336,6 +364,7 @@ class SignalCopier:
         self.running = True
         self.on_status('running')
         bots_str = ', '.join(self.enabled_bots) if self.enabled_bots else 'ALL'
+        self._recover_positions_from_mt5()
         self._cleanup_closed_positions()
 
         self._log(f"Connecting to signal server... (sources: {bots_str})")
