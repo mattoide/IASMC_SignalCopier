@@ -136,11 +136,36 @@ def get_symbol_info(symbol: str) -> Optional[dict]:
         if bare != symbol:
             candidates = [bare] + candidates
 
+    # First pass: find a tradable symbol (trade_mode == FULL)
     for test_sym in candidates:
         info = mt5.symbol_info(test_sym)
         if info is None:
             continue
+        # Skip symbols that are not tradable (e.g. USDJPY exists on XM but only USDJPY# is tradable)
+        if info.trade_mode != mt5.SYMBOL_TRADE_MODE_FULL:
+            continue
         # Enable symbol in MarketWatch if not visible
+        if not info.visible:
+            mt5.symbol_select(test_sym, True)
+            info = mt5.symbol_info(test_sym)
+        if info:
+            return {
+                'name': test_sym,
+                'point': info.point,
+                'digits': info.digits,
+                'trade_tick_size': info.trade_tick_size,
+                'trade_tick_value': info.trade_tick_value,
+                'volume_min': info.volume_min,
+                'volume_max': info.volume_max,
+                'volume_step': info.volume_step,
+                'spread': info.spread,
+            }
+
+    # Second pass: fallback to any existing symbol (in case trade_mode check is too strict)
+    for test_sym in candidates:
+        info = mt5.symbol_info(test_sym)
+        if info is None:
+            continue
         if not info.visible:
             mt5.symbol_select(test_sym, True)
             info = mt5.symbol_info(test_sym)
