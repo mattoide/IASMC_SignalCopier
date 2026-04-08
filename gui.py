@@ -26,7 +26,7 @@ CONFIG_FILE = os.path.join(_APP_DIR, 'config.json')
 DEFAULT_SERVER_URL = 'https://signalserver-6iumv5b0.on-forge.com'
 
 # Available bots that can send signals
-AVAILABLE_BOTS = ['IASMC', 'HybridSMC']
+AVAILABLE_BOTS = ['HybridSMC', 'IASMC', 'PatternMiner', 'SRBiasTrader', 'ImpulseDetector']
 
 LANG = {
     'en': {
@@ -151,7 +151,7 @@ def load_config():
             'max_positions': 0,
             'max_per_symbol': 1,
         },
-        'enabled_bots': ['IASMC', 'HybridSMC'],
+        'enabled_bots': ['HybridSMC'],
         'server': {'url': DEFAULT_SERVER_URL},
     }
 

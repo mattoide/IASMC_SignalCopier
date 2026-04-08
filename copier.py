@@ -81,6 +81,9 @@ log = logging.getLogger(__name__)
 BOT_MAGIC = {
     'IASMC': 12121,
     'HybridSMC': 12122,
+    'PatternMiner': 12123,
+    'SRBiasTrader': 12124,
+    'ImpulseDetector': 12125,
 }
 DEFAULT_MAGIC = 12121
 
