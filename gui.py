@@ -142,7 +142,7 @@ def load_config():
         'trading': {
             'use_signal_settings': True,
             'custom_risk_pct': 1.0,
-            'max_positions': 5,
+            'max_positions': 0,
             'max_per_symbol': 1,
         },
         'enabled_bots': ['IASMC', 'HybridSMC'],
@@ -248,7 +248,7 @@ class SignalCopierGUI:
         self.risk_var = tk.DoubleVar(value=self.config['trading'].get('custom_risk_pct', 1.0))
         ttk.Entry(cf, textvariable=self.risk_var, width=6).grid(row=0, column=1, sticky='w')
         self.w_mposlbl = ttk.Label(cf, text=self.t['max_pos']); self.w_mposlbl.grid(row=0, column=2, sticky='w', padx=(10, 3))
-        self.maxpos_var = tk.IntVar(value=self.config['trading'].get('max_positions', 5))
+        self.maxpos_var = tk.IntVar(value=self.config['trading'].get('max_positions', 0))
         ttk.Entry(cf, textvariable=self.maxpos_var, width=4).grid(row=0, column=3, sticky='w')
         self.w_msymlbl = ttk.Label(cf, text=self.t['max_sym']); self.w_msymlbl.grid(row=0, column=4, sticky='w', padx=(10, 3))
         self.maxsym_var = tk.IntVar(value=self.config['trading'].get('max_per_symbol', 1))

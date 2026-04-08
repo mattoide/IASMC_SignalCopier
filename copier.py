@@ -8,8 +8,48 @@ import asyncio
 import logging
 import json
 import os
+import socket
 import requests
 from datetime import datetime, timezone
+from urllib3.util.connection import allowed_gai_family  # noqa: F401
+
+# --- DNS fallback via Google DNS-over-HTTPS (bypasses VPN DNS issues) ---
+_orig_getaddrinfo = socket.getaddrinfo
+_dns_cache = {}
+
+
+def _resolve_doh(hostname):
+    """Resolve hostname via Google DNS-over-HTTPS (port 443, not blocked by VPN)."""
+    cached = _dns_cache.get(hostname)
+    if cached:
+        return cached
+    try:
+        import urllib.request
+        import json as _json
+        url = f'https://dns.google/resolve?name={hostname}&type=A'
+        req = urllib.request.Request(url, headers={'Accept': 'application/dns-json'})
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            data = _json.loads(resp.read())
+            for ans in data.get('Answer', []):
+                if ans.get('type') == 1:
+                    _dns_cache[hostname] = ans['data']
+                    return ans['data']
+    except Exception:
+        pass
+    return None
+
+
+def _patched_getaddrinfo(host, port, *args, **kwargs):
+    try:
+        return _orig_getaddrinfo(host, port, *args, **kwargs)
+    except socket.gaierror:
+        ip = _resolve_doh(host)
+        if ip:
+            return [(socket.AF_INET, socket.SOCK_STREAM, 6, '', (ip, port if port else 443))]
+        raise
+
+
+socket.getaddrinfo = _patched_getaddrinfo
 
 from signal_parser import (
     from_server_payload,
@@ -60,7 +100,7 @@ class SignalCopier:
 
     @property
     def max_positions(self) -> int:
-        return self.config.get('trading', {}).get('max_positions', 5)
+        return self.config.get('trading', {}).get('max_positions', 0)
 
     @property
     def max_per_symbol(self) -> int:
@@ -145,7 +185,7 @@ class SignalCopier:
         magic = self._get_magic(source)
         total_pos = sum(len(get_open_positions(m)) for m in BOT_MAGIC.values())
 
-        if total_pos >= self.max_positions:
+        if self.max_positions > 0 and total_pos >= self.max_positions:
             self._log(f"SKIP: Max positions ({total_pos}/{self.max_positions})")
             return
 

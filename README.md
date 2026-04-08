@@ -1,10 +1,26 @@
 # SignalCopier
 
-Telegram signal copier for MT5. Reads signals from a Telegram channel and executes them automatically.
+Signal copier for MT5. Polls a signal server and executes trades automatically.
 
 ## Features
-- Auto-detect MT5 terminal (no manual config needed)
+- Polls signal server for IASMC and HybridSMC trading signals
+- Auto-detect MT5 terminal or manual path selection
+- Signal types: Open, Close, SL Modify, Partial TP, Portfolio TP
+- Per-bot position tracking with independent magic numbers
 - Configurable risk % or use signal's suggested risk
-- GUI interface
+- DNS-over-HTTPS fallback for VPN environments
+- EN/IT language support
+- GUI interface (tkinter)
 - Standalone .exe (no Python needed)
+
+## Usage
+1. Open MetaTrader 5 and login
+2. Run `python gui.py` or the standalone `.exe`
+3. Click Connect, select signal sources, click START
+
+## Build
+```
+pyinstaller IASMC_SignalCopier.spec
+```
+Output in `dist/IASMC_SignalCopier.exe`.
 
