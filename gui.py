@@ -17,7 +17,7 @@ from mt5_connector import auto_connect, disconnect, get_open_positions, get_acco
 from copier import SignalCopier, BOT_MAGIC
 
 if getattr(sys, 'frozen', False):
-    _APP_DIR = os.path.join(os.path.dirname(sys.executable), 'data')
+    _APP_DIR = os.path.join(os.path.dirname(sys.executable), 'SignalCopierData')
 else:
     _APP_DIR = os.path.dirname(os.path.abspath(__file__))
 os.makedirs(_APP_DIR, exist_ok=True)

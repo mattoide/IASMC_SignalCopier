@@ -84,7 +84,7 @@ DEFAULT_MAGIC = 12121
 # App data directory — use "data" subfolder next to exe when frozen (PyInstaller)
 import sys
 if getattr(sys, 'frozen', False):
-    _APP_DIR = os.path.join(os.path.dirname(sys.executable), 'data')
+    _APP_DIR = os.path.join(os.path.dirname(sys.executable), 'SignalCopierData')
 else:
     _APP_DIR = os.path.dirname(os.path.abspath(__file__))
 os.makedirs(_APP_DIR, exist_ok=True)
