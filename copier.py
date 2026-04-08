@@ -81,9 +81,13 @@ BOT_MAGIC = {
 }
 DEFAULT_MAGIC = 12121
 
-# Persistent state file for position tracking — use exe dir when frozen (PyInstaller)
+# App data directory — use "data" subfolder next to exe when frozen (PyInstaller)
 import sys
-_APP_DIR = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.dirname(os.path.abspath(__file__))
+if getattr(sys, 'frozen', False):
+    _APP_DIR = os.path.join(os.path.dirname(sys.executable), 'data')
+else:
+    _APP_DIR = os.path.dirname(os.path.abspath(__file__))
+os.makedirs(_APP_DIR, exist_ok=True)
 STATE_FILE = os.path.join(_APP_DIR, 'positions_state.json')
 
 

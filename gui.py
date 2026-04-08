@@ -16,7 +16,11 @@ from datetime import datetime
 from mt5_connector import auto_connect, disconnect, get_open_positions, get_account_equity
 from copier import SignalCopier, BOT_MAGIC
 
-_APP_DIR = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.dirname(os.path.abspath(__file__))
+if getattr(sys, 'frozen', False):
+    _APP_DIR = os.path.join(os.path.dirname(sys.executable), 'data')
+else:
+    _APP_DIR = os.path.dirname(os.path.abspath(__file__))
+os.makedirs(_APP_DIR, exist_ok=True)
 CONFIG_FILE = os.path.join(_APP_DIR, 'config.json')
 
 DEFAULT_SERVER_URL = 'https://signalserver-6iumv5b0.on-forge.com'
