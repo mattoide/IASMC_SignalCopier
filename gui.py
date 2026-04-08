@@ -165,11 +165,11 @@ class SignalCopierGUI:
     def __init__(self):
         self.root = tk.Tk()
         self.root.title("Signal Copier")
-        w, h = 620, 520
+        w, h = 760, 560
         x = (self.root.winfo_screenwidth() - w) // 2
         y = (self.root.winfo_screenheight() - h) // 2
         self.root.geometry(f"{w}x{h}+{x}+{y}")
-        self.root.minsize(500, 400)
+        self.root.minsize(600, 480)
         self.root.configure(bg='#1a1a2e')
         self.root.resizable(True, True)
 
@@ -234,22 +234,22 @@ class SignalCopierGUI:
         self.mt5_positions = ttk.Label(ig, text="--"); self.mt5_positions.grid(row=2, column=5, sticky='w', padx=(5, 0))
         self.w_conn = ttk.Button(self.w_mt5f, text=self.t['connect'], command=self._try_connect_mt5); self.w_conn.pack(anchor='e', pady=(3, 0))
 
-        # -- Signal Sources + Settings (combined row) --
-        mid = ttk.Frame(self.root); mid.pack(fill='x', padx=10, pady=3)
-
-        self.w_srcf = ttk.LabelFrame(mid, text=self.t['sources_frame'], padding=6); self.w_srcf.pack(side='left', fill='both', expand=True, padx=(0, 3))
+        # -- Signal Sources --
+        self.w_srcf = ttk.LabelFrame(self.root, text=self.t['sources_frame'], padding=6); self.w_srcf.pack(fill='x', padx=10, pady=3)
         self.bot_checkboxes = {}
         bf_bots = ttk.Frame(self.w_srcf); bf_bots.pack(fill='x')
         for i, bot in enumerate(AVAILABLE_BOTS):
             cb = ttk.Checkbutton(bf_bots, text=bot, variable=self.bot_vars[bot], style='Bot.TCheckbutton')
-            cb.grid(row=0, column=i, sticky='w', padx=(0, 15))
+            cb.grid(row=0, column=i, sticky='w', padx=(0, 12))
             self.bot_checkboxes[bot] = cb
 
-        self.w_setf = ttk.LabelFrame(mid, text=self.t['settings_frame'], padding=6); self.w_setf.pack(side='left', fill='both', expand=True, padx=(3, 0))
+        # -- Trading Settings --
+        self.w_setf = ttk.LabelFrame(self.root, text=self.t['settings_frame'], padding=6); self.w_setf.pack(fill='x', padx=10, pady=3)
+        sf = ttk.Frame(self.w_setf); sf.pack(fill='x')
         self.use_signal_var = tk.BooleanVar(value=self.config['trading'].get('use_signal_settings', True))
-        self.w_usesig = ttk.Checkbutton(self.w_setf, text=self.t['use_signal'], variable=self.use_signal_var, command=self._toggle_custom)
-        self.w_usesig.pack(anchor='w')
-        cf = ttk.Frame(self.w_setf); cf.pack(fill='x', pady=(3, 0)); self.custom_frame = cf
+        self.w_usesig = ttk.Checkbutton(sf, text=self.t['use_signal'], variable=self.use_signal_var, command=self._toggle_custom)
+        self.w_usesig.grid(row=0, column=0, sticky='w')
+        cf = ttk.Frame(sf); cf.grid(row=0, column=1, sticky='w', padx=(20, 0)); self.custom_frame = cf
         self.w_risklbl = ttk.Label(cf, text=self.t['risk_pct']); self.w_risklbl.grid(row=0, column=0, sticky='w', padx=(0, 3))
         self.risk_var = tk.DoubleVar(value=self.config['trading'].get('custom_risk_pct', 1.0))
         ttk.Entry(cf, textvariable=self.risk_var, width=6).grid(row=0, column=1, sticky='w')
@@ -257,7 +257,7 @@ class SignalCopierGUI:
         self.maxpos_var = tk.IntVar(value=self.config['trading'].get('max_positions', 0))
         ttk.Entry(cf, textvariable=self.maxpos_var, width=4).grid(row=0, column=3, sticky='w')
         self.w_msymlbl = ttk.Label(cf, text=self.t['max_sym']); self.w_msymlbl.grid(row=0, column=4, sticky='w', padx=(10, 3))
-        self.maxsym_var = tk.IntVar(value=self.config['trading'].get('max_per_symbol', 1))
+        self.maxsym_var = tk.IntVar(value=self.config['trading'].get('max_per_symbol', 0))
         ttk.Entry(cf, textvariable=self.maxsym_var, width=4).grid(row=0, column=5, sticky='w')
         self._toggle_custom()
 

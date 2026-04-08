@@ -126,7 +126,7 @@ class SignalCopier:
 
     @property
     def max_per_symbol(self) -> int:
-        return self.config.get('trading', {}).get('max_per_symbol', 1)
+        return self.config.get('trading', {}).get('max_per_symbol', 0)
 
     def _load_state(self) -> tuple:
         """Load position tracking state and last_signal_id from disk."""
@@ -248,7 +248,7 @@ class SignalCopier:
         for m in BOT_MAGIC.values():
             all_pos.extend(get_open_positions(m))
         sym_count = sum(1 for p in all_pos if sig.symbol in p.symbol)
-        if sym_count >= self.max_per_symbol:
+        if self.max_per_symbol > 0 and sym_count >= self.max_per_symbol:
             self._log(f"SKIP: Max per symbol {sig.symbol} ({sym_count}/{self.max_per_symbol})")
             return
 
