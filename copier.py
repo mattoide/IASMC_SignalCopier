@@ -310,6 +310,16 @@ class SignalCopier:
                 return
 
         vol_to_close = pos.volume * (sig.closed_pct / 100)
+        # If volume to close rounds up to full position but signal is partial, skip
+        sym_info = get_symbol_info(sig.symbol)
+        vol_step = sym_info['volume_step'] if sym_info else 0.01
+        vol_min = sym_info['volume_min'] if sym_info else 0.01
+        vol_rounded = max(round(vol_to_close / vol_step) * vol_step, vol_min)
+        if vol_rounded >= pos.volume and sig.closed_pct < 100:
+            self._log(f"  SKIP partial close: {sig.closed_pct:.0f}% of {pos.volume:.2f} lots = "
+                      f"{vol_to_close:.4f} -> rounds to full position (volume_min={vol_min})")
+            return
+
         result = close_partial(pos.ticket, vol_to_close)
         if result['success']:
             self._log(f"  Closed {result['volume_closed']:.2f} lots of {pos.volume:.2f}")
@@ -329,20 +339,26 @@ class SignalCopier:
             return
 
         for pos in positions:
-            matched = None
-            for sym, pv, vol, pnl in (sig.details or []):
+            close_pct = 0.5  # default: close 50%
+            for sym, partial_vol, total_vol, pnl in (sig.details or []):
                 if sym in pos.symbol or pos.symbol in sym:
-                    matched = (pv, vol)
+                    if total_vol > 0:
+                        close_pct = partial_vol / total_vol
                     break
 
-            if matched:
-                vol_to_close = matched[0]
-            else:
-                vol_to_close = pos.volume * 0.5
+            vol_to_close = pos.volume * close_pct
+            sym_info = get_symbol_info(pos.symbol)
+            vol_step = sym_info['volume_step'] if sym_info else 0.01
+            vol_min = sym_info['volume_min'] if sym_info else 0.01
+            vol_rounded = max(round(vol_to_close / vol_step) * vol_step, vol_min)
+            if vol_rounded >= pos.volume and close_pct < 1.0:
+                self._log(f"  {pos.symbol}: SKIP portfolio close {close_pct:.0%} of {pos.volume:.2f} "
+                          f"-> rounds to full position (volume_min={vol_min})")
+                continue
 
             result = close_partial(pos.ticket, vol_to_close)
             if result['success']:
-                self._log(f"  {pos.symbol}: closed {result['volume_closed']:.2f} lots")
+                self._log(f"  {pos.symbol}: closed {result['volume_closed']:.2f} lots ({close_pct:.0%} of {pos.volume:.2f})")
             else:
                 self._log(f"  {pos.symbol}: close failed -- {result['error']}")
 
