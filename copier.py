@@ -81,8 +81,10 @@ BOT_MAGIC = {
 }
 DEFAULT_MAGIC = 12121
 
-# Persistent state file for position tracking
-STATE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'positions_state.json')
+# Persistent state file for position tracking — use exe dir when frozen (PyInstaller)
+import sys
+_APP_DIR = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.dirname(os.path.abspath(__file__))
+STATE_FILE = os.path.join(_APP_DIR, 'positions_state.json')
 
 
 class SignalCopier:

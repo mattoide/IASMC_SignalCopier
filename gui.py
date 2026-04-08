@@ -10,12 +10,14 @@ import threading
 import asyncio
 import json
 import os
+import sys
 from datetime import datetime
 
 from mt5_connector import auto_connect, disconnect, get_open_positions, get_account_equity
 from copier import SignalCopier, BOT_MAGIC
 
-CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json')
+_APP_DIR = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.dirname(os.path.abspath(__file__))
+CONFIG_FILE = os.path.join(_APP_DIR, 'config.json')
 
 DEFAULT_SERVER_URL = 'https://signalserver-6iumv5b0.on-forge.com'
 
@@ -436,7 +438,7 @@ class SignalCopierGUI:
 
 if __name__ == '__main__':
     import logging
-    _log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logs')
+    _log_dir = os.path.join(_APP_DIR, 'logs')
     os.makedirs(_log_dir, exist_ok=True)
     logging.basicConfig(
         level=logging.INFO,
