@@ -16,17 +16,19 @@ from urllib3.util.connection import allowed_gai_family  # noqa: F401
 # --- DNS fallback via Google DNS-over-HTTPS (bypasses VPN DNS issues) ---
 _orig_getaddrinfo = socket.getaddrinfo
 _dns_cache = {}
+_resolving_doh = False
 
 
 def _resolve_doh(hostname):
-    """Resolve hostname via Google DNS-over-HTTPS (port 443, not blocked by VPN)."""
+    """Resolve hostname via Google DoH at IP 8.8.8.8 (no DNS needed for the request itself)."""
     cached = _dns_cache.get(hostname)
     if cached:
         return cached
     try:
         import urllib.request
         import json as _json
-        url = f'https://dns.google/resolve?name={hostname}&type=A'
+        # Use IP 8.8.8.8 directly to avoid recursive DNS resolution
+        url = f'https://8.8.8.8/resolve?name={hostname}&type=A'
         req = urllib.request.Request(url, headers={'Accept': 'application/dns-json'})
         with urllib.request.urlopen(req, timeout=5) as resp:
             data = _json.loads(resp.read())
@@ -40,10 +42,18 @@ def _resolve_doh(hostname):
 
 
 def _patched_getaddrinfo(host, port, *args, **kwargs):
+    global _resolving_doh
+    # Avoid recursion: if we're already resolving via DoH, use original resolver
+    if _resolving_doh:
+        return _orig_getaddrinfo(host, port, *args, **kwargs)
     try:
         return _orig_getaddrinfo(host, port, *args, **kwargs)
     except socket.gaierror:
-        ip = _resolve_doh(host)
+        _resolving_doh = True
+        try:
+            ip = _resolve_doh(host)
+        finally:
+            _resolving_doh = False
         if ip:
             return [(socket.AF_INET, socket.SOCK_STREAM, 6, '', (ip, port if port else 443))]
         raise
@@ -397,7 +407,10 @@ class SignalCopier:
             except Exception as e:
                 self._log(f"Server poll error: {e}")
 
-            await asyncio.sleep(poll_interval)
+            try:
+                await asyncio.sleep(poll_interval)
+            except Exception:
+                pass
 
     # -- START/STOP ---------------------------------------------------------
     async def start(self):
@@ -410,8 +423,8 @@ class SignalCopier:
         self._log(f"Connecting to signal server... (sources: {bots_str})")
         try:
             await self._poll_server()
-        except Exception as e:
-            self._log(f"ERROR: {e}")
+        except BaseException as e:
+            self._log(f"ERROR: {type(e).__name__}: {e}")
         finally:
             self.running = False
             self.on_status('stopped')
