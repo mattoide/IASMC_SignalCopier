@@ -66,11 +66,14 @@ from signal_parser import (
     SignalOpen, SignalClose, SignalSLModified,
     SignalPartialTP, SignalPortfolioTP,
 )
+import MetaTrader5 as mt5
 from mt5_connector import (
     get_symbol_info, calculate_lot_size, place_order,
     get_open_positions, get_account_equity,
     find_position_by_symbol, modify_sl, close_partial,
 )
+
+MAX_SIGNAL_AGE_SECONDS = 3600  # 1 hour
 
 log = logging.getLogger(__name__)
 
@@ -197,10 +200,38 @@ class SignalCopier:
         return BOT_MAGIC.get(source, DEFAULT_MAGIC)
 
     # -- OPEN ---------------------------------------------------------------
-    async def _handle_open(self, sig: SignalOpen, source: str):
+    async def _handle_open(self, sig: SignalOpen, source: str, created_at: str = None):
         src_tag = f"[{source}] " if source != 'unknown' else ""
         self._log(f"{src_tag}SIGNAL: {sig.direction.upper()} {sig.symbol} "
                   f"@ {sig.entry} SL={sig.stop_loss} TP={sig.take_profit}")
+
+        # -- Signal age check --
+        if created_at:
+            try:
+                sig_time = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                age = (datetime.now(timezone.utc) - sig_time).total_seconds()
+                if age > MAX_SIGNAL_AGE_SECONDS:
+                    self._log(f"{src_tag}SKIP: Signal too old ({age/60:.0f} min)")
+                    return
+            except Exception:
+                pass
+
+        # -- Price still in trade zone check --
+        sym_info = get_symbol_info(sig.symbol)
+        if sym_info and sig.stop_loss > 0 and sig.take_profit > 0:
+            tick = mt5.symbol_info_tick(sym_info['name'])
+            if tick:
+                price = tick.ask if sig.direction == 'buy' else tick.bid
+                if sig.direction == 'buy':
+                    if price <= sig.stop_loss or price >= sig.take_profit:
+                        self._log(f"{src_tag}SKIP: Price {price} outside trade zone "
+                                  f"(SL={sig.stop_loss}, TP={sig.take_profit})")
+                        return
+                else:
+                    if price >= sig.stop_loss or price <= sig.take_profit:
+                        self._log(f"{src_tag}SKIP: Price {price} outside trade zone "
+                                  f"(SL={sig.stop_loss}, TP={sig.take_profit})")
+                        return
 
         magic = self._get_magic(source)
         total_pos = sum(len(get_open_positions(m)) for m in BOT_MAGIC.values())
@@ -431,7 +462,7 @@ class SignalCopier:
                                   f"{sig_data.get('symbol', '')} from {source}")
 
                         if isinstance(signal, SignalOpen):
-                            await self._handle_open(signal, source)
+                            await self._handle_open(signal, source, sig_data.get('created_at'))
                         elif isinstance(signal, SignalClose):
                             self._handle_close(signal, source)
                         elif isinstance(signal, SignalSLModified):
