@@ -375,16 +375,26 @@ class SignalCopier:
         # Get latest server id to skip old signals (only if no saved state)
         if last_id == 0:
             try:
-                resp = requests.get(
-                    f"{server_url}/api/signals/latest",
-                    params={'after_id': 0, 'source': sources},
-                    timeout=10,
-                )
-                if resp.status_code == 200:
+                page_id = 0
+                total_skipped = 0
+                while True:
+                    resp = requests.get(
+                        f"{server_url}/api/signals/latest",
+                        params={'after_id': page_id, 'source': sources},
+                        timeout=10,
+                    )
+                    if resp.status_code != 200:
+                        break
                     signals = resp.json().get('signals', [])
-                    if signals:
-                        last_id = max(s['id'] for s in signals)
-                        self._log(f"First run: skipping {len(signals)} existing signals (last_id={last_id})")
+                    if not signals:
+                        break
+                    page_id = max(s['id'] for s in signals)
+                    total_skipped += len(signals)
+                last_id = page_id
+                if total_skipped:
+                    self._log(f"First run: skipping {total_skipped} existing signals (last_id={last_id})")
+                    self._last_signal_id = last_id
+                    self._save_state()
             except Exception as e:
                 self._log(f"Server initial sync failed: {e}")
         else:
