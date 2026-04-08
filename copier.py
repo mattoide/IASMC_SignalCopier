@@ -94,7 +94,7 @@ class SignalCopier:
         self.running = False
         self.trades_today = 0
         # ticket -> {'source': 'IASMC', 'symbol': 'XAUUSD', 'direction': 'buy'}
-        self._position_map = self._load_state()
+        self._position_map, self._last_signal_id = self._load_state()
 
     @property
     def enabled_bots(self) -> list:
@@ -116,22 +116,26 @@ class SignalCopier:
     def max_per_symbol(self) -> int:
         return self.config.get('trading', {}).get('max_per_symbol', 1)
 
-    def _load_state(self) -> dict:
-        """Load position tracking state from disk."""
+    def _load_state(self) -> tuple:
+        """Load position tracking state and last_signal_id from disk."""
         if os.path.exists(STATE_FILE):
             try:
                 with open(STATE_FILE, 'r') as f:
                     data = json.load(f)
-                return {int(k): v for k, v in data.items()}
+                last_id = data.pop('_last_signal_id', 0)
+                positions = {int(k): v for k, v in data.items()}
+                return positions, last_id
             except Exception:
                 pass
-        return {}
+        return {}, 0
 
     def _save_state(self):
-        """Persist position tracking state."""
+        """Persist position tracking state and last_signal_id."""
         try:
+            save_data = dict(self._position_map)
+            save_data['_last_signal_id'] = self._last_signal_id
             with open(STATE_FILE, 'w') as f:
-                json.dump(self._position_map, f, indent=2)
+                json.dump(save_data, f, indent=2)
         except Exception as e:
             log.warning(f"Failed to save state: {e}")
 
@@ -348,22 +352,25 @@ class SignalCopier:
         server_url = self.config.get('server', {}).get('url', '').rstrip('/')
         poll_interval = self.config.get('server', {}).get('poll_interval', 5)
         sources = ','.join(self.enabled_bots) if self.enabled_bots else ''
-        last_id = 0
+        last_id = self._last_signal_id
 
-        # Get initial last_id (skip existing signals)
-        try:
-            resp = requests.get(
-                f"{server_url}/api/signals/latest",
-                params={'after_id': 0, 'source': sources},
-                timeout=10,
-            )
-            if resp.status_code == 200:
-                signals = resp.json().get('signals', [])
-                if signals:
-                    last_id = max(s['id'] for s in signals)
-                    self._log(f"Server sync: skipping {len(signals)} existing signals (last_id={last_id})")
-        except Exception as e:
-            self._log(f"Server initial sync failed: {e}")
+        # Get latest server id to skip old signals (only if no saved state)
+        if last_id == 0:
+            try:
+                resp = requests.get(
+                    f"{server_url}/api/signals/latest",
+                    params={'after_id': 0, 'source': sources},
+                    timeout=10,
+                )
+                if resp.status_code == 200:
+                    signals = resp.json().get('signals', [])
+                    if signals:
+                        last_id = max(s['id'] for s in signals)
+                        self._log(f"First run: skipping {len(signals)} existing signals (last_id={last_id})")
+            except Exception as e:
+                self._log(f"Server initial sync failed: {e}")
+        else:
+            self._log(f"Resuming from last signal #{last_id}")
 
         self._log(f"Polling server every {poll_interval}s...")
 
@@ -380,6 +387,8 @@ class SignalCopier:
                         sig_id = sig_data['id']
                         if sig_id > last_id:
                             last_id = sig_id
+                            self._last_signal_id = last_id
+                            self._save_state()
                         signal, source = from_server_payload(sig_data)
                         if signal is None:
                             continue
