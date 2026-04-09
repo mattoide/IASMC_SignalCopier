@@ -73,7 +73,7 @@ from mt5_connector import (
     find_position_by_symbol, modify_sl, close_partial,
 )
 
-MAX_SIGNAL_AGE_SECONDS = 3600  # 1 hour
+MAX_SIGNAL_AGE_SECONDS = 600  # 10 minutes
 
 log = logging.getLogger(__name__)
 
