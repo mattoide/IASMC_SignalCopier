@@ -299,22 +299,49 @@ def place_order(symbol_name: str, direction: str, lot: float,
         'type_filling': _get_filling_mode(symbol_name),
     }
 
-    result = mt5.order_send(request)
-    if result is None:
-        return {'success': False, 'error': f'order_send returned None: {mt5.last_error()}'}
+    # Get symbol info for volume constraints
+    sym_info = mt5.symbol_info(symbol_name)
+    vol_min = sym_info.volume_min if sym_info else 0.01
+    vol_step = sym_info.volume_step if sym_info else 0.01
 
-    if result.retcode == mt5.TRADE_RETCODE_DONE:
-        return {
-            'success': True,
-            'ticket': result.order,
-            'price': result.price,
-            'volume': result.volume,
-        }
-    else:
+    current_lot = lot
+    while current_lot >= vol_min:
+        request['volume'] = round(current_lot, 2)
+        # Refresh price on retry
+        tick = mt5.symbol_info_tick(symbol_name)
+        if tick:
+            request['price'] = tick.ask if direction == 'buy' else tick.bid
+
+        result = mt5.order_send(request)
+        if result is None:
+            return {'success': False, 'error': f'order_send returned None: {mt5.last_error()}'}
+
+        if result.retcode == mt5.TRADE_RETCODE_DONE:
+            return {
+                'success': True,
+                'ticket': result.order,
+                'price': result.price,
+                'volume': result.volume,
+            }
+
+        # retcode 10019 = No money — retry with smaller lot
+        if result.retcode == 10019:
+            log.warning(f"No money at {current_lot:.2f} lots, reducing...")
+            current_lot = round(current_lot - vol_step, 2)
+            if current_lot < vol_min:
+                return {
+                    'success': False,
+                    'error': f'No money even at minimum lot {vol_min}',
+                }
+            continue
+
+        # Any other error — return immediately
         return {
             'success': False,
             'error': f'retcode={result.retcode}, comment={result.comment}',
         }
+
+    return {'success': False, 'error': f'No money even at minimum lot {vol_min}'}
 
 
 def get_open_positions(magic: int = 12121) -> list:
