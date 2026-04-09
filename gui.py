@@ -149,7 +149,7 @@ def load_config():
             'use_signal_settings': True,
             'custom_risk_pct': 1.0,
             'max_positions': 0,
-            'max_per_symbol': 1,
+            'max_per_symbol': 0,
         },
         'enabled_bots': ['HybridSMC'],
         'server': {'url': DEFAULT_SERVER_URL},
