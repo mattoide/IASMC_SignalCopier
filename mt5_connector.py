@@ -60,61 +60,61 @@ def disconnect():
 
 SYMBOL_ALIASES = {
     # Metals
-    'XAUUSD': ['XAUUSD', 'GOLD', 'GOLD#', 'XAUUSD#', 'XAUUSD.cash', 'XAUUSDm', 'XAUUSD.a', 'XAUUSD.b', 'XAUUSD.c', 'GOLD.a'],
-    'XAGUSD': ['XAGUSD', 'SILVER', 'SILVER#', 'XAGUSD#', 'XAGUSD.cash', 'XAGUSDm', 'XAGUSD.a'],
+    'XAUUSD': ['XAUUSD', 'GOLD', 'GOLD#', 'XAUUSD#', 'XAUUSD.cash', 'XAUUSDm', 'XAUUSD.a', 'XAUUSD.b', 'XAUUSD.c', 'GOLD.a', 'XAUUSD.r', 'XAUUSD.fn'],
+    'XAGUSD': ['XAGUSD', 'SILVER', 'SILVER#', 'XAGUSD#', 'XAGUSD.cash', 'XAGUSDm', 'XAGUSD.a', 'XAGUSD.r', 'XAGUSD.fn'],
     # Forex majors
-    'EURUSD': ['EURUSD', 'EURUSD#', 'EURUSDm', 'EURUSD.a', 'EURUSD.b', 'EURUSD.c'],
-    'GBPUSD': ['GBPUSD', 'GBPUSD#', 'GBPUSDm', 'GBPUSD.a', 'GBPUSD.b', 'GBPUSD.c'],
-    'USDJPY': ['USDJPY', 'USDJPY#', 'USDJPYm', 'USDJPY.a', 'USDJPY.b', 'USDJPY.c'],
-    'GBPJPY': ['GBPJPY', 'GBPJPY#', 'GBPJPYm', 'GBPJPY.a', 'GBPJPY.b', 'GBPJPY.c'],
-    'AUDUSD': ['AUDUSD', 'AUDUSD#', 'AUDUSDm', 'AUDUSD.a', 'AUDUSD.b'],
-    'NZDUSD': ['NZDUSD', 'NZDUSD#', 'NZDUSDm', 'NZDUSD.a'],
-    'USDCAD': ['USDCAD', 'USDCAD#', 'USDCADm', 'USDCAD.a'],
-    'USDCHF': ['USDCHF', 'USDCHF#', 'USDCHFm', 'USDCHF.a'],
+    'EURUSD': ['EURUSD', 'EURUSD#', 'EURUSDm', 'EURUSD.a', 'EURUSD.b', 'EURUSD.c', 'EURUSD.r', 'EURUSD.fn'],
+    'GBPUSD': ['GBPUSD', 'GBPUSD#', 'GBPUSDm', 'GBPUSD.a', 'GBPUSD.b', 'GBPUSD.c', 'GBPUSD.r', 'GBPUSD.fn'],
+    'USDJPY': ['USDJPY', 'USDJPY#', 'USDJPYm', 'USDJPY.a', 'USDJPY.b', 'USDJPY.c', 'USDJPY.r', 'USDJPY.fn'],
+    'GBPJPY': ['GBPJPY', 'GBPJPY#', 'GBPJPYm', 'GBPJPY.a', 'GBPJPY.b', 'GBPJPY.c', 'GBPJPY.r', 'GBPJPY.fn'],
+    'AUDUSD': ['AUDUSD', 'AUDUSD#', 'AUDUSDm', 'AUDUSD.a', 'AUDUSD.b', 'AUDUSD.r', 'AUDUSD.fn'],
+    'NZDUSD': ['NZDUSD', 'NZDUSD#', 'NZDUSDm', 'NZDUSD.a', 'NZDUSD.r', 'NZDUSD.fn'],
+    'USDCAD': ['USDCAD', 'USDCAD#', 'USDCADm', 'USDCAD.a', 'USDCAD.r', 'USDCAD.fn'],
+    'USDCHF': ['USDCHF', 'USDCHF#', 'USDCHFm', 'USDCHF.a', 'USDCHF.r', 'USDCHF.fn'],
     # Forex cross
-    'EURJPY': ['EURJPY', 'EURJPY#', 'EURJPYm', 'EURJPY.a'],
-    'EURGBP': ['EURGBP', 'EURGBP#', 'EURGBPm', 'EURGBP.a'],
-    'EURCHF': ['EURCHF', 'EURCHF#', 'EURCHFm', 'EURCHF.a'],
-    'EURAUD': ['EURAUD', 'EURAUD#', 'EURAUDm', 'EURAUD.a'],
-    'EURNZD': ['EURNZD', 'EURNZD#', 'EURNZDm', 'EURNZD.a'],
-    'EURCAD': ['EURCAD', 'EURCAD#', 'EURCADm', 'EURCAD.a'],
-    'AUDCAD': ['AUDCAD', 'AUDCAD#', 'AUDCADm', 'AUDCAD.a'],
-    'AUDNZD': ['AUDNZD', 'AUDNZD#', 'AUDNZDm', 'AUDNZD.a'],
-    'AUDJPY': ['AUDJPY', 'AUDJPY#', 'AUDJPYm', 'AUDJPY.a'],
-    'AUDCHF': ['AUDCHF', 'AUDCHF#', 'AUDCHFm', 'AUDCHF.a'],
-    'NZDJPY': ['NZDJPY', 'NZDJPY#', 'NZDJPYm', 'NZDJPY.a'],
-    'NZDCHF': ['NZDCHF', 'NZDCHF#', 'NZDCHFm', 'NZDCHF.a'],
-    'NZDCAD': ['NZDCAD', 'NZDCAD#', 'NZDCADm', 'NZDCAD.a'],
-    'GBPAUD': ['GBPAUD', 'GBPAUD#', 'GBPAUDm', 'GBPAUD.a'],
-    'GBPCAD': ['GBPCAD', 'GBPCAD#', 'GBPCADm', 'GBPCAD.a'],
-    'GBPCHF': ['GBPCHF', 'GBPCHF#', 'GBPCHFm', 'GBPCHF.a'],
-    'GBPNZD': ['GBPNZD', 'GBPNZD#', 'GBPNZDm', 'GBPNZD.a'],
-    'CADCHF': ['CADCHF', 'CADCHF#', 'CADCHFm', 'CADCHF.a'],
-    'CADJPY': ['CADJPY', 'CADJPY#', 'CADJPYm', 'CADJPY.a'],
-    'CHFJPY': ['CHFJPY', 'CHFJPY#', 'CHFJPYm', 'CHFJPY.a'],
+    'EURJPY': ['EURJPY', 'EURJPY#', 'EURJPYm', 'EURJPY.a', 'EURJPY.r', 'EURJPY.fn'],
+    'EURGBP': ['EURGBP', 'EURGBP#', 'EURGBPm', 'EURGBP.a', 'EURGBP.r', 'EURGBP.fn'],
+    'EURCHF': ['EURCHF', 'EURCHF#', 'EURCHFm', 'EURCHF.a', 'EURCHF.r', 'EURCHF.fn'],
+    'EURAUD': ['EURAUD', 'EURAUD#', 'EURAUDm', 'EURAUD.a', 'EURAUD.r', 'EURAUD.fn'],
+    'EURNZD': ['EURNZD', 'EURNZD#', 'EURNZDm', 'EURNZD.a', 'EURNZD.r', 'EURNZD.fn'],
+    'EURCAD': ['EURCAD', 'EURCAD#', 'EURCADm', 'EURCAD.a', 'EURCAD.r', 'EURCAD.fn'],
+    'AUDCAD': ['AUDCAD', 'AUDCAD#', 'AUDCADm', 'AUDCAD.a', 'AUDCAD.r', 'AUDCAD.fn'],
+    'AUDNZD': ['AUDNZD', 'AUDNZD#', 'AUDNZDm', 'AUDNZD.a', 'AUDNZD.r', 'AUDNZD.fn'],
+    'AUDJPY': ['AUDJPY', 'AUDJPY#', 'AUDJPYm', 'AUDJPY.a', 'AUDJPY.r', 'AUDJPY.fn'],
+    'AUDCHF': ['AUDCHF', 'AUDCHF#', 'AUDCHFm', 'AUDCHF.a', 'AUDCHF.r', 'AUDCHF.fn'],
+    'NZDJPY': ['NZDJPY', 'NZDJPY#', 'NZDJPYm', 'NZDJPY.a', 'NZDJPY.r', 'NZDJPY.fn'],
+    'NZDCHF': ['NZDCHF', 'NZDCHF#', 'NZDCHFm', 'NZDCHF.a', 'NZDCHF.r', 'NZDCHF.fn'],
+    'NZDCAD': ['NZDCAD', 'NZDCAD#', 'NZDCADm', 'NZDCAD.a', 'NZDCAD.r', 'NZDCAD.fn'],
+    'GBPAUD': ['GBPAUD', 'GBPAUD#', 'GBPAUDm', 'GBPAUD.a', 'GBPAUD.r', 'GBPAUD.fn'],
+    'GBPCAD': ['GBPCAD', 'GBPCAD#', 'GBPCADm', 'GBPCAD.a', 'GBPCAD.r', 'GBPCAD.fn'],
+    'GBPCHF': ['GBPCHF', 'GBPCHF#', 'GBPCHFm', 'GBPCHF.a', 'GBPCHF.r', 'GBPCHF.fn'],
+    'GBPNZD': ['GBPNZD', 'GBPNZD#', 'GBPNZDm', 'GBPNZD.a', 'GBPNZD.r', 'GBPNZD.fn'],
+    'CADCHF': ['CADCHF', 'CADCHF#', 'CADCHFm', 'CADCHF.a', 'CADCHF.r', 'CADCHF.fn'],
+    'CADJPY': ['CADJPY', 'CADJPY#', 'CADJPYm', 'CADJPY.a', 'CADJPY.r', 'CADJPY.fn'],
+    'CHFJPY': ['CHFJPY', 'CHFJPY#', 'CHFJPYm', 'CHFJPY.a', 'CHFJPY.r', 'CHFJPY.fn'],
     # US Indices
-    'NAS100': ['NAS100', 'US100', 'US100.cash', 'US100Cash#', 'USTEC', 'USTEC.cash', 'NAS100.cash', 'NAS100#', 'NDX100', 'USATECHIDXUSD', 'US100m'],
-    'SP500': ['SP500', 'US500', 'US500.cash', 'US500Cash#', 'SPX500', 'SPX500.cash', 'SP500.cash', 'SP500#', 'USA500IDXUSD', 'US500m'],
-    'US30': ['US30', 'US30.cash', 'US30Cash#', 'DJ30', 'DJ30.cash', 'US30#', 'USA30IDXUSD', 'US30m'],
+    'NAS100': ['NAS100', 'US100', 'US100.cash', 'US100Cash#', 'USTEC', 'USTEC.cash', 'NAS100.cash', 'NAS100#', 'NDX100', 'USATECHIDXUSD', 'US100m', 'NAS100.r', 'NAS100.fn', 'US100.r', 'US100.fn', 'USTEC.r', 'USTEC.fn'],
+    'SP500': ['SP500', 'US500', 'US500.cash', 'US500Cash#', 'SPX500', 'SPX500.cash', 'SP500.cash', 'SP500#', 'USA500IDXUSD', 'US500m', 'SP500.r', 'SP500.fn', 'US500.r', 'US500.fn', 'SPX500.r', 'SPX500.fn'],
+    'US30': ['US30', 'US30.cash', 'US30Cash#', 'DJ30', 'DJ30.cash', 'US30#', 'USA30IDXUSD', 'US30m', 'US30.r', 'US30.fn', 'DJ30.r', 'DJ30.fn'],
     # EU Indices
-    'GER40': ['GER40', 'GER40.cash', 'GER40Cash#', 'DAX40', 'DE40', 'DE40.cash', 'GER40#', 'DEUIDXEUR', 'GER40m'],
-    'FRA40': ['FRA40', 'FRA40.cash', 'FRA40Cash#', 'FR40', 'FR40.cash', 'FRA40#', 'FRAIDXEUR', 'FRA40m'],
-    'UK100': ['UK100', 'UK100.cash', 'UK100Cash#', 'FTSE100', 'UK100#', 'GBRIDXGBP', 'UK100m'],
-    'EU50': ['EU50', 'EU50.cash', 'EU50Cash#', 'EUSTX50', 'STOXX50', 'EU50#', 'EUSIDXEUR'],
-    'SWI20': ['SWI20', 'SWI20.cash', 'SWI20Cash#', 'SWI20#', 'CHEIDXCHF'],
-    'ESP35': ['ESP35', 'ESP35.cash', 'ESP35Cash#', 'ESP35#', 'ESPIDXEUR'],
-    'IT40': ['IT40', 'IT40.cash', 'IT40Cash#', 'IT40#', 'ITAIDXEUR'],
+    'GER40': ['GER40', 'GER30', 'GER40.cash', 'GER40Cash#', 'DAX40', 'DE40', 'DE40.cash', 'GER40#', 'DEUIDXEUR', 'GER40m', 'GER40.r', 'GER40.fn', 'DE40.r', 'DE40.fn'],
+    'FRA40': ['FRA40', 'FRA40.cash', 'FRA40Cash#', 'FR40', 'FR40.cash', 'FRA40#', 'FRAIDXEUR', 'FRA40m', 'FRA40.r', 'FRA40.fn'],
+    'UK100': ['UK100', 'UK100.cash', 'UK100Cash#', 'FTSE100', 'UK100#', 'GBRIDXGBP', 'UK100m', 'UK100.r', 'UK100.fn'],
+    'EU50': ['EU50', 'EU50.cash', 'EU50Cash#', 'EUSTX50', 'STOXX50', 'EU50#', 'EUSIDXEUR', 'EU50.r', 'EU50.fn'],
+    'SWI20': ['SWI20', 'SWI20.cash', 'SWI20Cash#', 'SWI20#', 'CHEIDXCHF', 'SWI20.r', 'SWI20.fn'],
+    'ESP35': ['ESP35', 'ESP35.cash', 'ESP35Cash#', 'ESP35#', 'ESPIDXEUR', 'ESP35.r', 'ESP35.fn'],
+    'IT40': ['IT40', 'IT40.cash', 'IT40Cash#', 'IT40#', 'ITAIDXEUR', 'IT40.r', 'IT40.fn'],
     # Asia Indices
-    'JPN225': ['JPN225', 'JP225', 'JP225.cash', 'JP225Cash#', 'NI225', 'NIKKEI225', 'JPN225.cash', 'JPN225#', 'JPNIDXJPY', 'JP225m'],
-    'HK50': ['HK50', 'HK50.cash', 'HK50Cash#', 'HSI50', 'HK50#', 'HKGIDXHKD', 'HK50m'],
-    'AUS200': ['AUS200', 'AUS200.cash', 'AUS200Cash#', 'ASX200', 'AUS200#', 'AUSIDXAUD', 'AUS200m'],
+    'JPN225': ['JPN225', 'JP225', 'JP225.cash', 'JP225Cash#', 'NI225', 'NIKKEI225', 'JPN225.cash', 'JPN225#', 'JPNIDXJPY', 'JP225m', 'JPN225.r', 'JPN225.fn', 'JP225.r', 'JP225.fn'],
+    'HK50': ['HK50', 'HK50.cash', 'HK50Cash#', 'HSI50', 'HK50#', 'HKGIDXHKD', 'HK50m', 'HK50.r', 'HK50.fn'],
+    'AUS200': ['AUS200', 'AUS200.cash', 'AUS200Cash#', 'ASX200', 'AUS200#', 'AUSIDXAUD', 'AUS200m', 'AUS200.r', 'AUS200.fn'],
     # Energy
-    'WTIUSD': ['WTIUSD', 'USOIL', 'USOIL.cash', 'OILCash#', 'WTIUSD#', 'WTI', 'CL', 'CRUDEOIL', 'USOILm', 'USOIL#'],
-    'BRENTUSD': ['BRENTUSD', 'UKOIL', 'UKOIL.cash', 'BRENT', 'BRN', 'UKOILm', 'UKOIL#'],
-    'NATGAS': ['NATGAS', 'NATGAS#', 'NGAS', 'XNGUSD', 'NATGASm', 'NATGAS.cash'],
+    'WTIUSD': ['WTIUSD', 'USOIL', 'USOUSD', 'USOIL.cash', 'OILCash#', 'WTIUSD#', 'WTI', 'CL', 'CRUDEOIL', 'USOILm', 'USOIL#', 'WTIUSD.r', 'WTIUSD.fn', 'USOIL.r', 'USOIL.fn'],
+    'BRENTUSD': ['BRENTUSD', 'UKOIL', 'UKOUSD', 'UKOIL.cash', 'BRENT', 'BRN', 'UKOILm', 'UKOIL#', 'BRENTUSD.r', 'BRENTUSD.fn', 'UKOIL.r', 'UKOIL.fn'],
+    'NATGAS': ['NATGAS', 'NATGAS#', 'NGAS', 'XNGUSD', 'NATGASm', 'NATGAS.cash', 'NATGAS.r', 'NATGAS.fn', 'XNGUSD.r', 'XNGUSD.fn'],
     # Crypto
-    'BTCUSD': ['BTCUSD', 'BTCUSD#', 'BTC/USD', 'BTCUSDm', 'BITCOIN'],
-    'ETHUSD': ['ETHUSD', 'ETHUSD#', 'ETH/USD', 'ETHUSDm', 'ETHEREUM'],
+    'BTCUSD': ['BTCUSD', 'BTCUSD#', 'BTC/USD', 'BTCUSDm', 'BITCOIN', 'BTCUSD.r', 'BTCUSD.fn'],
+    'ETHUSD': ['ETHUSD', 'ETHUSD#', 'ETH/USD', 'ETHUSDm', 'ETHEREUM', 'ETHUSD.r', 'ETHUSD.fn'],
 }
 
 
@@ -129,7 +129,7 @@ def get_symbol_info(symbol: str) -> Optional[dict]:
             break
     if not candidates:
         # Generic: try symbol as-is, then with common broker suffixes
-        suffixes = ['', '#', '.cash', 'Cash#', '.cash#']
+        suffixes = ['', '#', '.cash', 'Cash#', '.cash#', '.r', '.fn', '.raw', '.e']
         candidates = [symbol + s for s in suffixes]
         # Also try without suffix if symbol already has one
         bare = symbol.replace('#', '').replace('.cash', '')
