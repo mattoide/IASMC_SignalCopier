@@ -11,6 +11,7 @@ import asyncio
 import json
 import os
 import sys
+import ctypes
 from datetime import datetime
 
 from mt5_connector import auto_connect, disconnect, get_open_positions, get_account_equity
@@ -24,6 +25,39 @@ os.makedirs(_APP_DIR, exist_ok=True)
 CONFIG_FILE = os.path.join(_APP_DIR, 'config.json')
 
 DEFAULT_SERVER_URL = 'https://signalserver-6iumv5b0.on-forge.com'
+
+# Keep singleton mutex handle alive for the process lifetime.
+_SINGLETON_HANDLE = None
+
+
+def _ensure_singleton():
+    """Prevent multiple SignalCopier instances using a Win32 named mutex.
+
+    Rationale: each extra instance polls the signal server independently and
+    opens duplicate MT5 positions for the same signal. The named mutex is
+    session-local (no backslash prefix), so two different Windows users can
+    each run their own copier, but the same user cannot launch twice.
+
+    Returns True if this is the first instance, False if another is running.
+    On non-Windows platforms it transparently returns True.
+    """
+    global _SINGLETON_HANDLE
+    try:
+        kernel32 = ctypes.windll.kernel32
+    except (AttributeError, OSError):
+        return True  # non-Windows: skip guard
+    ERROR_ALREADY_EXISTS = 183
+    # CreateMutexW(lpMutexAttributes, bInitialOwner, lpName)
+    kernel32.CreateMutexW.restype = ctypes.c_void_p
+    kernel32.CreateMutexW.argtypes = [ctypes.c_void_p, ctypes.c_bool, ctypes.c_wchar_p]
+    handle = kernel32.CreateMutexW(None, False, 'IASMC_SignalCopier_Singleton_v1')
+    if not handle:
+        return True  # fail-open: if mutex creation itself fails, allow launch
+    if kernel32.GetLastError() == ERROR_ALREADY_EXISTS:
+        kernel32.CloseHandle(ctypes.c_void_p(handle))
+        return False
+    _SINGLETON_HANDLE = handle
+    return True
 
 # Available bots that can send signals
 AVAILABLE_BOTS = ['HybridSMC', 'IASMC', 'PatternMiner', 'SRBiasTrader', 'ImpulseDetector']
@@ -441,6 +475,23 @@ class SignalCopierGUI:
 
 
 if __name__ == '__main__':
+    # Singleton guard — refuse to start if another SignalCopier is already running.
+    # Prevents duplicate polling / duplicate MT5 positions from parallel launches.
+    if not _ensure_singleton():
+        try:
+            _warn_root = tk.Tk()
+            _warn_root.withdraw()
+            messagebox.showwarning(
+                'SignalCopier',
+                "SignalCopier è già in esecuzione.\n\n"
+                "Controlla la taskbar o la system tray.\n"
+                "È consentita una sola istanza per evitare posizioni duplicate."
+            )
+            _warn_root.destroy()
+        except Exception:
+            pass
+        sys.exit(0)
+
     import logging
     _log_dir = os.path.join(_APP_DIR, 'logs')
     os.makedirs(_log_dir, exist_ok=True)

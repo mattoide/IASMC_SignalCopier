@@ -12,6 +12,7 @@ Signal copier for MT5. Polls a signal server and executes trades automatically.
 - EN/IT language support
 - GUI interface (tkinter)
 - Standalone .exe (no Python needed)
+- **Singleton lock**: only one copier instance per Windows session (prevents duplicate positions from accidental double-launch)
 
 ## Usage
 1. Open MetaTrader 5 and login
